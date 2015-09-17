@@ -519,7 +519,10 @@ class App():
 					startSize = int(0.25 * float(len(sortedData)))
 					currSize = startSize
 					currAverage = numpy.average(sortedData[0:currSize])
-					currNoise = max(sortedData[0:currSize]) - min(sortedData[0:currSize])
+					if self.noise == "MM":
+						currNoise = max(sortedData[0:currSize]) - min(sortedData[0:currSize])
+					elif self.noise == "RMS":
+						currNoise = numpy.std(sortedData[0:currSize])
 					for k in range(0,len(sortedData)-(startSize+1)):
 						if sortedData[currSize+1] < currAverage + 3 * currNoise:
 							currSize += 1
