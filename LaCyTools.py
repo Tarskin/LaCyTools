@@ -20,6 +20,8 @@ import tkFileDialog
 import tkMessageBox
 import ttk
 import zlib
+## pytables
+import tables
 # Dev Imports
 #import timeit
 #import inspect
@@ -42,7 +44,7 @@ CALIB_S_N_CUTOFF = 9			# The minimum S/N value of a feature to be used for calib
 CALIB_MIN_PEAK =5				# Minimum number of calibrants
 
 # PARAMETERS
-MASS_MODIFIERS = []				# The mass modifiers refer to changes to the analyte. 
+MASS_MODIFIERS = []				# The mass modifiers refer to changes to the analyte.
 								# Charge carrier should NOT go here (the program assumes that your analytes are protonated)
 
 # Extraction Parameters
@@ -336,6 +338,7 @@ class App():
 		# VARIABLES
 		self.master = master
 		self.inputFile = ""
+		self.inputFileIdx = 0
 		self.refFile = ""
 		self.alFile = ""
 		self.calFile = IntVar()
@@ -358,6 +361,8 @@ class App():
 		#self.noise = "MM"
 		self.batch = False
 		self.fig = matplotlib.figure.Figure(figsize=(8, 6))
+		## pytables
+		self.ptFile = None
 		# The LacyTools Logo (created by ....)
 		if os.path.isfile('./UI.png'):
 			image = plt.imread('./UI.png')
@@ -414,7 +419,7 @@ class App():
 	def calcQuadratic(self,data):
 		""" This function fits the specified function in 'fitFunc'
 		to the data, using the curve_fit package from scipy.optimize.
-		
+
 		INPUT: A list of (m/z,int) tuples
 		OUTPUT: The parameters for the fitted function
 		"""
@@ -478,20 +483,94 @@ class App():
 		###############
 		return f
 
+	def batchConvert(self,master):
+		chunkshape = (100000,)
+		filenames = glob.glob(str(self.batchFolder)+"/*" + EXTENSION)
+
+		print "Converting..."
+		try:
+			rawfile = tables.open_file(os.path.join(self.batchFolder, "pytables.h5"), "w", filters=tables.Filters(complevel=1, complib="blosc:lz4"))
+		except tables.HDF5ExtError:
+			print "Error creating pyTables file"
+			raise
+
+		class Scan(tables.IsDescription):
+			sample = tables.Int64Col(pos=0)
+			scan = tables.Int64Col(pos=1)
+			rt = tables.Float64Col(pos=2)
+			art = tables.Float64Col(pos=3)
+			idx = tables.Int64Col(pos=4)
+			size = tables.Int64Col(pos=5)
+
+		rawfile.create_vlarray('/', 'filenames', atom=tables.VLUnicodeAtom(), expectedrows=len(filenames))
+		rawfile.create_table('/', 'scans', description=Scan, chunkshape=chunkshape)
+		rawfile.create_earray('/', 'mzs', atom=tables.Float64Atom(), shape=(0,), chunkshape=chunkshape)
+		rawfile.create_earray('/', 'Is', atom=tables.Int64Atom(), shape=(0,), chunkshape=chunkshape)
+
+		row = rawfile.root.scans.row
+
+		last_idx = 0
+		last_size = 0
+
+		# main loop
+		for count, filename in enumerate(filenames):
+			array = []
+			self.inputFile = filename
+			self.readData(array)
+			# loop over spectra
+			for scan, spectrum in enumerate(array):
+				rt = spectrum[0]
+				mzs, Is = numpy.array(spectrum[1]).T
+				mzs[1:] = numpy.diff(mzs)
+				assert numpy.all(numpy.cumsum(mzs) == numpy.array(spectrum[1]).T[0])
+
+				rawfile.root.mzs.append(mzs)
+				rawfile.root.Is.append(Is)
+
+				row['sample'] = count
+				row['scan'] = scan
+				row['rt'] = rt
+				row['idx'] = last_idx = last_idx + last_size
+				row['size'] = last_size = len(mzs)
+
+				row.append()
+
+			rawfile.root.filenames.append(filename)
+
+		rawfile.flush()
+
+		self.ptFile = rawfile
+		self.ptFileNameStr.set(os.path.join(self.batchFolder, rawfile.filename))
+
+		print "Finished converting."
+
+		#assert False
+
 	def batchProcess(self,master):
 		self.batch = True
 		# Check if reference or alignment file was selected
 		if self.refFile == "" and self.alFile == "" and self.calFile == "":
 			tkMessageBox.showinfo("File Error","No reference or alignment file selected")
+		ptFileName = self.ptFileNameStr.get()
+		if ptFileName != "":
+			if self.ptFile is None:
+				self.ptFile = tables.open_file(ptFileName, mode='a')
+			filenames = self.ptFile.root.filenames[:]
+			self.readData = self.readPTData
+			self.transform_mzXML = self.alignRTs
+		else:
+			filenames = glob.glob(str(self.batchFolder)+"/*" + EXTENSION)
+		filenames2idx = dict([(filename, idx) for idx, filename in enumerate(filenames)])
 		# ALIGNMENT
 		if self.alFile != "":
 			features = []
 			features = self.feature_reader(self.alFile)
 			features = sorted(features, key = lambda tup: tup[1])
-			for file in glob.glob(str(self.batchFolder)+"/*" + EXTENSION):
+			for file in filenames:
 				array = []
 				timePairs = []
 				self.inputFile = file
+				self.inputFileIdx = filenames2idx[file]
 				self.readData(array)
 				for i in features:
 					peakTime = 0
@@ -589,9 +668,10 @@ class App():
 			self.initCompositionMasses(self.refFile)
 			ref = []
 			self.refParser(ref)
-			for file in glob.glob(str(self.batchFolder)+"/aligned*" + EXTENSION):
+			for file in filenames:
 				results = []
 				self.inputFile = file
+				self.inputFileIdx = filenames2idx[file]
 				array = []
 				self.readData(array)
 				times = []
@@ -603,7 +683,7 @@ class App():
 						chunks['%s' % i] = []
 				for i in ref:
 					chunks['%s' % i[4]].append(i)
-				for index,i in enumerate(chunks.keys()): 
+				for index,i in enumerate(chunks.keys()):
 					spectrum = self.sumSpectrum(i,array)
 					calibrants = []
 					# Calibrate the sum spectrum
@@ -733,13 +813,13 @@ class App():
 		function then appends the theoretical m/z value of a calibrants
 		that were actually observed to a list (actualCalibrants) which
 		is returned at the end of the function.
-		
+
 		INPUT 1: A list of floats containg the observed local maxima (of
 		the spline fit within each inclusion range, assuming that they
 		were above user specified S/N cut off).
 		INPUT 2: A list of floats containing the theoretical m/z of all
 		calibrants.
-		OUTPUT: A list of floats containing the theoretical m/z of the 
+		OUTPUT: A list of floats containing the theoretical m/z of the
 		calibrants which were near an oberved local maxima.
 		"""
 		actualCalibrants = []
@@ -794,7 +874,7 @@ class App():
 		""" This function reads the calibration file and returns the
 		features in a tuple containg the lower time and upper time values
 		followed by a list of the m/z coordinates
-		
+
 		INPUT: None
 		OUTPUT: Tuple containing (lowTime, highTime, [m/z coordinatse])
 		"""
@@ -842,7 +922,7 @@ class App():
 			try:
 				combinedSpectra[test[index]][1] += i[1]
 			except:
-				# We ignore the data points at m/z edge, if they are important 
+				# We ignore the data points at m/z edge, if they are important
 				# then the user should do a proper measurement.
 				pass
 		return combinedSpectra
@@ -887,7 +967,7 @@ class App():
 			print "Writing output file: "+outFile
 			with open(outFile,'w') as fw:
 				for line in fr:
-					if 'retentionTime' in line: 
+					if 'retentionTime' in line:
 						time=line.split("\"")
 						if time[1][0] == 'P':
 							time = time[1][2:-1]
@@ -900,6 +980,20 @@ class App():
 						fw.write(line)
 					else:
 						fw.write(line)
+
+	def alignRTs(self,file,polynomial):
+		"""Reads the mzXML file and transforms the reported retention
+		time by the specified polynomial function.
+		"""
+		print "Aligning file", self.inputFile
+		i = self.inputFileIdx
+		for row in self.ptFile.root.scans.where("sample == i"):
+			time = row['rt']
+			# The below line is only to make it work with mzMine
+			if 	self.fitFunc(time,*polynomial) > 0:
+				row['art'] = self.fitFunc(time,*polynomial)
+			row.update()
+		self.ptFile.flush()
 
 	def feature_finder(self,data,lowMass,highMass):
 		"""Reads the current spectrum and returns the maximum
@@ -929,7 +1023,7 @@ class App():
 				for line in fr:
 					if not line:
 						break
-					line = line.strip().split("\t")	
+					line = line.strip().split("\t")
 					if current:
 						if current.composition == line[0]:
 							foo = Isotope()
@@ -1459,7 +1553,7 @@ class App():
 									pass
 					fw.write("\t"+str(math.sqrt(RMS))+"\n")
 				fw.write("\n")
-                       
+
 			###############################
 			# Analyte Mass Error (in PPM) #
 			###############################
@@ -1750,6 +1844,7 @@ class App():
 		#self.cal = StringVar()
 		self.ref = StringVar()
 		self.folder = StringVar()
+		self.ptFileNameStr = StringVar()
 		def alButton():
 			master.openAlFile()
 			self.al.set(master.alFile)
@@ -1762,6 +1857,10 @@ class App():
 		def batchButton():
 			master.openBatchFolder()
 			self.folder.set(master.batchFolder)
+		## pyTables
+		def ptButton():
+			master.openPTFile()
+			self.ptFileNameStr.set(master.ptFileName)
 		def close(self):
 			master.batchWindow = 0
 			top.destroy()
@@ -1785,10 +1884,18 @@ class App():
 		self.batchDir.grid(row = 5, column = 0, sticky = W)
 		self.batch = Label(top, textvariable = self.folder, width = 25)
 		self.batch.grid(row = 5, column = 1)
+		## pytables
+		self.convertButton = Button(top, text = "Batch Convert to pyTables", width = 25, command = lambda: master.batchConvert(master))
+		self.convertButton.grid(row = 6, column = 0,columnspan = 2)
+		self.ptFileNameButton = Button(top, text = "pyTables File", width= 25, command = lambda: ptButton())
+		self.ptFileNameButton.grid(row = 7, column = 0, sticky = W)
+		self.ptFileNameLabel = Label(top, textvariable = self.ptFileNameStr, width = 25)
+		self.ptFileNameLabel.grid(row = 7, column = 1)
+		## pytables end
 		self.output = Button(top, text = "Output Format", width = 25, command = lambda: master.outputPopup(master))
-		self.output.grid(row = 6, column = 0,columnspan = 2)
+		self.output.grid(row = 8, column = 0,columnspan = 2)
 		self.run = Button(top, text = "Run Batch Process", width = 25, command = lambda: master.batchProcess(master))
-		self.run.grid(row = 7, column = 0, columnspan = 2)
+		self.run.grid(row = 9, column = 0, columnspan = 2)
 		#top.lift()
 		# Couple the attributes to button presses
 		top.attributes("-topmost", True)
@@ -1797,7 +1904,7 @@ class App():
 		""" This function creates a pop up box to specify what output
 		should be shown in the final summary. The default value for all
 		variables is off (0) and by ticking a box it is set to on (1).
-		
+
 		INPUT: None
 		OUTPUT: None
 		"""
@@ -1863,15 +1970,15 @@ class App():
 		"""Returns element number directly to the left in array 'array'
 		of specified element 'target', assuming 'array[x][0]' is sorted,
 		if direction is set as 'left'.
-		
-		The return value a is such that all elements in array[:a] have 
+
+		The return value a is such that all elements in array[:a] have
 		element < target, and all e in array[a:] have element >= target.
-		
+
 		Returns element number directly to the right in array 'array'
 		of specified element 'target', assuming 'array[x][0]' is sorted,
 		if direction is set as 'right'
 
-		The return value a is such that all elements in array[:a] have 
+		The return value a is such that all elements in array[:a] have
 		element <= target, and all e in array[a:] have element > target.
 
 		former left"""
@@ -1897,7 +2004,7 @@ class App():
 		to select a file. The chosen file is then read (by the readData
 		function) and the read data is used to plot the selected spectrum
 		on the screen (by the plotData function).
-		
+
 		INPUT: None
 		OUTPUT: None
 		"""
@@ -1906,7 +2013,7 @@ class App():
 			pass
 		else:
 			setattr(self,'inputFile',file_path)
-			
+
 	def openCalFile(self):
 		""" TODO
 		"""
@@ -1920,7 +2027,7 @@ class App():
 		""" This function opens a Tkinter filedialog, asking the user
 		to select a directory. The chosen directory is then set to the
 		self.batchFolder variable.
-		
+
 		INPUT: None
 		OUTPUT: None
 		"""
@@ -1948,6 +2055,15 @@ class App():
 		else:
 			setattr(self,'alFile',file_path)
 
+	def openPTFile(self):
+		""" PLACE HOLDER.
+		"""
+		file_path = tkFileDialog.askopenfilename()
+		if not file_path:
+			pass
+		else:
+			setattr(self,'ptFileName',file_path)
+
 	def processBlock(self, block, array):
 		""" This function processes a data block as taken from the input
 		file.
@@ -1963,13 +2079,17 @@ class App():
 			if rt[0] == 'P':
 				rt = rt[2:-1]
 
-		"""if 'peaksCount' in block: 
+		"""if 'peaksCount' in block:
 			peaks = block.split("peaksCount")[1]
 			peaks = peaks.split("\"")[1]
 		"""
 
-		if 'zlib' in block:
+		# FIX not to catch zlib in encoded data
+		if '"zlib"' in block:
 			compression = True
+		# FIX for implicit no compression
+		else:
+			compression = False
 
 		if 'byteOrder' in block:
 			byteOrder = block.split("byteOrder")[1]
@@ -1979,7 +2099,8 @@ class App():
 			precision = block.split("precision")[1]
 			precision = precision.split("\"")[1]
 
-		if 'contentType' in block:
+		# FIX pairOrder is Bruker format bending
+		if 'contentType' in block or 'pairOrder' in block:
 			peaks = block.split("m/z-int\">")[1]
 			peaks = peaks.split("</peaks>")[0]
 
@@ -1993,7 +2114,7 @@ class App():
 		""" This function calculates the total chance network based on
 		all the individual distributions. The function multiplies all
 		the chances to get a single chance for a single option.
-		
+
 		INPUT: A list containing the Analyte m/z followed by several
 		other lists (1 for each isotopic state).
 		OUTPUT: A list of float tuples (isotopic m/z, isotopic chance)
@@ -2004,11 +2125,11 @@ class App():
 			totals.append((mass+i[0]+j[0]+k[0]+l[0]+m[0]+n[0]+o[0]+p[0],
 						   i[1]*j[1]*k[1]*l[1]*m[1]*n[1]*o[1]*p[1]))
 		return totals
-		
+
 	def mergeChances(self,totals):
 		""" This function merges all the isotopic chances based on the
 		specified resolution of the machine.
-		
+
 		INPUT: A list of float tuples (isotopic m/z, isotopic chance)
 		OUTPUT: A sorted list of float tuples (isotopic m/z, isotopic
 		chance).
@@ -2030,13 +2151,13 @@ class App():
 
 	def calcDistribution(self, element, number):
 		""" This function calculates the fraction of the total intensity
-		that is present in each isotope of the given element based on 
-		a binomial distribution. The function takes the name of the 
+		that is present in each isotope of the given element based on
+		a binomial distribution. The function takes the name of the
 		element and the number of atoms of said element as an input and
 		returns a list of (m/z,fraction) tuples. The number of isotopes
 		that is returned is dependant on the distribution, once fractions
 		fall below 0.01 the function stops.
-		
+
 		INPUT1: A string containing the code for the element (ie 33S)
 		INPUT2: An integer listing the number of atoms
 		OUTPUT: A list of float tuples (isotope m/z, isotope fraction).
@@ -2052,13 +2173,13 @@ class App():
 				if f < 0.01:
 					break
 		return fractions
-	
+
 	def parseAnalyte(self,Analyte):
 		""" This function splits the Analyte input string into a parts
 		and calculates the total number of each element of interest per
 		Analyte. The function will then attach further elements based on
 		the user specified mass modifiers before calling the isotopic
-		distribution function. The function finally returns a list 
+		distribution function. The function finally returns a list
 		containing the analyte mass and distribution lists for each
 		isotopic state.
 
@@ -2105,14 +2226,14 @@ class App():
 		return ((mass,carbons,hydrogens,nitrogens,oxygens17,oxygens18,sulfurs33,sulfurs34,sulfurs36))
 
 	def initCompositionMasses(self, file):
-		""" This function reads the composition file. Calculates the 
-		masses for the compositions read from the composition file. 
+		""" This function reads the composition file. Calculates the
+		masses for the compositions read from the composition file.
 		The function then calculates the mass and fraction of total
 		ions that should be theoretically present in. The final output
 		is a modified reference list containing each analyte's structure
 		and window followed by a list of isotope m/z and isotopic
 		fraction.
-		
+
 		INPUT: A string containing the path of the composition file
 		OUTPUT: None
 		"""
@@ -2161,7 +2282,7 @@ class App():
 				# End of variable check
 				values =  self.parseAnalyte(i[0])
 				totals = self.getChanceNetwork(values)
-				results = self.mergeChances(totals)	
+				results = self.mergeChances(totals)
 				results.sort(key=lambda x: x[0])
 				# Make the range inclusive
 				for j in range(minCharge,maxCharge+1):
@@ -2244,7 +2365,7 @@ class App():
 							data = zip(x_points,y_points)
 							print "Guassian Curve Fit failed for analyte: "+str(i[0])+", reverting to non fitted local maximum"
 							for j in data:
-								if j[1] > maximum[1]: 
+								if j[1] > maximum[1]:
 									maximum = (j[0],j[1])
 						except:
 							print "Analyte: "+str(i[0])+" is being troublesome, kill it"
@@ -2303,7 +2424,7 @@ class App():
 		""" This function reads mzXML files and has the scans decoded on
 		a per scan basis. The scans are identified by getting the line
 		number of the beginning and ending tag for a scan.
-		
+
 		INPUT: file handle
 		OUTPUT: TBA
 		"""
@@ -2325,6 +2446,16 @@ class App():
 					block = ""
 			#print "Finished processing "+str(self.inputFile)
 
+	def readPTData(self, array):
+		i = self.inputFileIdx
+		scans = self.ptFile.root.scans.read_where("sample == i")
+		for row in scans:
+			sample, scan, rt, art, idx, size = row
+			mzs = self.ptFile.root.mzs[idx:idx+size]
+			mzs = numpy.cumsum(mzs)
+			Is = self.ptFile.root.Is[idx:idx+size]
+			array.append((rt, numpy.vstack((mzs, Is)).T))
+
 	def refParser(self, ref):
 		"""Reads the reference file and fills the list 'ref' with names
 		and parameters inherent to the chosen analytes to be integrated.
@@ -2338,7 +2469,7 @@ class App():
 
 	def mzXMLDecoder(self, rt, peaks, precision, compression, byteOrder, array):
 		""" This function parses the encoded string from an mzXML file.
-		The decoded data is finally added to the 
+		The decoded data is finally added to the
 		"""
 		# get endian
 		endian = "!"
@@ -2371,7 +2502,7 @@ class App():
 		# list notation
 		array.append((float(rt),new))
 
-# Call the main app	
+# Call the main app
 root = Tk()
 app = App(root)
 root.mainloop()
