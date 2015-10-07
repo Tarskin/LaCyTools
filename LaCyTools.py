@@ -20,7 +20,6 @@ import tkFileDialog
 import tkMessageBox
 import ttk
 import zlib
-## pytables
 import tables
 # Dev Imports
 #import timeit
@@ -342,9 +341,11 @@ class App():
 		self.refFile = ""
 		self.alFile = ""
 		self.calFile = IntVar()
+		self.ptFile = None
 		self.batchFolder = ""
 		self.batchProcessing = 0
 		self.batchWindow = 0
+		self.dataWindow = 0
 		self.outputWindow = 0
 		self.analyteIntensity = IntVar()
 		self.analyteIntBck = IntVar()
@@ -361,8 +362,7 @@ class App():
 		#self.noise = "MM"
 		self.batch = False
 		self.fig = matplotlib.figure.Figure(figsize=(8, 6))
-		## pytables
-		self.ptFile = None
+
 		# The LacyTools Logo (created by ....)
 		if os.path.isfile('./UI.png'):
 			image = plt.imread('./UI.png')
@@ -393,6 +393,8 @@ class App():
 		extractmenu.add_command(label="Extract", command = self.extractData)
 
 		menu.add_command(label="Batch Process", command = lambda: self.batchPopup(self))
+
+		menu.add_command(label="Data Storage", command = lambda: self.dataPopup(self))
 
 	def feature_reader(self,file):
 		""" reads the contents of the 'features.txt' file and stores
@@ -453,7 +455,7 @@ class App():
 
 	# TODO: Check if this entire function can now be dropped?
 	def calcPolynomial(self,data):
-		"""Plots the set of timepoints (expected and observed) to
+		""" Plots the set of timepoints (expected and observed) to
 		visualize how well the alignment would fit.
 		"""
 		expected = []
@@ -483,7 +485,41 @@ class App():
 		###############
 		return f
 
+	def dataPopup(self,master):
+		if master.dataWindow == 1:
+			return
+		master.dataWindow = 1
+		self.folder = StringVar()
+		self.ptFileName = StringVar()
+		def close(self):
+			master.dataWindow = 0
+			top.destroy()
+		def batchButton():
+			master.openBatchFolder()
+			self.folder.set(master.batchFolder)
+		def ptButton():
+			master.openPTFile()
+			self.ptFileName.set(master.ptFile)
+		top = self.top = Toplevel()
+		top.protocol( "WM_DELETE_WINDOW", lambda: close(self))
+		self.batchDir = Button(top, text = "Batch Directory", width = 25, command = lambda: batchButton())
+		self.batchDir.grid(row = 0, column = 0, sticky = W)
+		self.batch = Label(top, textvariable = self.folder, width = 25)
+		self.batch.grid(row = 0, column = 1)
+		self.convertButton = Button(top, text = "Batch Convert to pyTables", width = 25, command = lambda: master.batchConvert(master))
+		self.convertButton.grid(row = 1, column = 0,columnspan = 2)
+		self.ptFileNameButton = Button(top, text = "pyTables File", width= 25, command = lambda: ptButton())
+		self.ptFileNameButton.grid(row = 2, column = 0, sticky = W)
+		self.ptFileNameLabel = Label(top, textvariable = self.ptFileName, width = 25)
+		self.ptFileNameLabel.grid(row = 2, column = 1)
+		
 	def batchConvert(self,master):
+		""" TODO: COMMENT THIS FUNCTION PLEASE.
+		This function does x, using Y
+		
+		INPUT: stuff
+		OUTPUT: stuff
+		"""
 		chunkshape = (100000,)
 		filenames = glob.glob(str(self.batchFolder)+"/*" + EXTENSION)
 
@@ -538,20 +574,15 @@ class App():
 			rawfile.root.filenames.append(filename)
 
 		rawfile.flush()
-
-		self.ptFile = rawfile
-		self.ptFileNameStr.set(os.path.join(self.batchFolder, rawfile.filename))
-
 		print "Finished converting."
-
-		#assert False
 
 	def batchProcess(self,master):
 		self.batch = True
 		# Check if reference or alignment file was selected
 		if self.refFile == "" and self.alFile == "" and self.calFile == "":
 			tkMessageBox.showinfo("File Error","No reference or alignment file selected")
-		ptFileName = self.ptFileNameStr.get()
+		if os.path.isfile(os.path.join(self.batchFolder,"pytables.h5")):
+			ptFileName = os.path.join(self.batchFolder,"pytables.h5")
 		if ptFileName != "":
 			if self.ptFile is None:
 				self.ptFile = tables.open_file(ptFileName, mode='a')
@@ -1799,68 +1830,27 @@ class App():
 				composition,charge,isotope = i[4][0].split("_")
 				fw.write(str(composition)+"\t"+str(charge)+"\t"+str(isotope)+"\t"+str(i[4][1])+"\t"+str(i[2])+"\t"+str(i[4][4])+"\t"+str(i[4][2])+"\t"+str(i[4][3])+"\t"+str(i[4][5])+"\t"+str(i[0])+"\t"+str(i[1][1])+"\t"+str(i[1][0])+"\t"+str(i[1][2])+"\t"+str(i[3])+"\n")
 
-	"""def batchProcess2(self,master):
-		self.batch = True
-		# Check if reference file was selected
-		if self.refFile == "":
-			tkMessageBox.showinfo("File Error","No reference file selected")
-		# Read reference file to initialize output file
-		ref = []
-		self.refParser(ref)
-		with open(OUTPUT,'w') as fw:
-			for i in ref:
-				if '#' in i[0]:
-					pass
-				else:
-					fw.write("\t"+str(i[0]))
-			fw.write("\n")
-			# Parse all files in chosen folder of specified extension
-			for file in glob.glob(str(self.batchFolder)+"/*" + EXTENSION):
-				progressbar["value"] = int( (float(index) / float(4) ) *100)
-				progressbar.update()
-				self.inputFile = file
-				# Calls the function that extracts the data
-				results = self.extractData()
-				fw.write(str(file))
-				# Write results to the output file
-				for i in results:
-					fw.write("\t"+str(i))
-				fw.write("\n")
-				master.batchProcess = 0
-		tkMessageBox.showinfo("Status Message","Batch Process finished on "+str(datetime.now()))"""
-
 	def batchPopup(self,master):
 		""" TODO
 
 		INPUT: None
 		OUTPUT: None
 		"""
-		#self.ri = Checkbutton(top, text = "Relative Intensity", variable = master.analyteRelIntensity, onvalue = 1, offvalue = 0)
-		#self.ri.grid(row = 2, column = 0, sticky = W)
 		if master.batchWindow == 1:
 			return
 		master.batchWindow = 1
 		self.al = StringVar()
-		#self.cal = StringVar()
 		self.ref = StringVar()
 		self.folder = StringVar()
-		self.ptFileNameStr = StringVar()
 		def alButton():
 			master.openAlFile()
 			self.al.set(master.alFile)
-		#def calButton():
-		#	master.openCalFile()
-		#	self.cal.set(master.calFile)
 		def refButton():
 			master.openRefFile()
 			self.ref.set(master.refFile)
 		def batchButton():
 			master.openBatchFolder()
 			self.folder.set(master.batchFolder)
-		## pyTables
-		def ptButton():
-			master.openPTFile()
-			self.ptFileNameStr.set(master.ptFileName)
 		def close(self):
 			master.batchWindow = 0
 			top.destroy()
@@ -1870,12 +1860,8 @@ class App():
 		self.aligns.grid(row = 2, column = 0, sticky = W)
 		self.alLabel = Label(top, textvariable = self.al, width = 25)
 		self.alLabel.grid(row = 2, column = 1)
-		#self.calibrate = Button(top, text = "Calibration File", width = 25, command = lambda: calButton())
-		#self.calibrate.grid(row = 3, column = 0, sticky = W)
 		self.calibrate = Checkbutton(top, text = "Calibration", variable = master.calFile, onvalue = 1, offvalue = 0)
 		self.calibrate.grid(row = 3, column = 0, sticky = W)
-		#self.calLabel = Label(top, textvariable = self.cal, width = 25)
-		#self.calLabel.grid(row = 3, column = 1)
 		self.compos = Button(top, text = "Reference File", width = 25, command = lambda: refButton())
 		self.compos.grid(row = 4, column = 0, sticky = W)
 		self.com = Label(top, textvariable = self.ref, width = 25)
@@ -1884,18 +1870,10 @@ class App():
 		self.batchDir.grid(row = 5, column = 0, sticky = W)
 		self.batch = Label(top, textvariable = self.folder, width = 25)
 		self.batch.grid(row = 5, column = 1)
-		## pytables
-		self.convertButton = Button(top, text = "Batch Convert to pyTables", width = 25, command = lambda: master.batchConvert(master))
-		self.convertButton.grid(row = 6, column = 0,columnspan = 2)
-		self.ptFileNameButton = Button(top, text = "pyTables File", width= 25, command = lambda: ptButton())
-		self.ptFileNameButton.grid(row = 7, column = 0, sticky = W)
-		self.ptFileNameLabel = Label(top, textvariable = self.ptFileNameStr, width = 25)
-		self.ptFileNameLabel.grid(row = 7, column = 1)
-		## pytables end
 		self.output = Button(top, text = "Output Format", width = 25, command = lambda: master.outputPopup(master))
-		self.output.grid(row = 8, column = 0,columnspan = 2)
+		self.output.grid(row = 6, column = 0,columnspan = 2)
 		self.run = Button(top, text = "Run Batch Process", width = 25, command = lambda: master.batchProcess(master))
-		self.run.grid(row = 9, column = 0, columnspan = 2)
+		self.run.grid(row = 7, column = 0, columnspan = 2)
 		#top.lift()
 		# Couple the attributes to button presses
 		top.attributes("-topmost", True)
