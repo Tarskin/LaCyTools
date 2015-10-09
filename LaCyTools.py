@@ -62,6 +62,9 @@ BACKGROUND_WINDOW = 10 			# Total m/z window (+ and -) to search for background
 EPSILON = 0.5					# DO NOT TOUCH THIS UNLESS YOU KNOW WTF YOU ARE DOING! Read below if you truly want to know the meaning:
 								# This value represents the maximum distance (in Da) for which the element specific isotopic mass defect will be combined
 
+# max number of m/z intensity pairs per scan
+SCAN_SIZE = 140000
+
 # Isotopic Mass Differences
 C = [('13C',0.0107,1.00335)]
 H = [('2H',0.00012,1.00628)]
@@ -518,9 +521,9 @@ class App():
 		INPUT: stuff
 		OUTPUT: stuff
 		"""
-		shape = (0, 100000)
-		stride = shape[1]
-		chunkshape = (100, stride)
+		import time
+
+		start_time = time.time()
 		filenames = glob.glob(str(self.batchFolder)+"/*" + EXTENSION)
 
 		print "Converting..."
@@ -534,19 +537,21 @@ class App():
 			sample = tables.Int64Col(pos=0)
 			scan = tables.Int64Col(pos=1)
 			rt = tables.Float64Col(pos=2)
-			art = tables.Float64Col(pos=3)				# aligned retention time
-			start = tables.Int64Col(shape=(2,), pos=4)
+			art = tables.Float64Col(pos=3)		# aligned retention time
+			idx = tables.Int64Col(pos=4)
 			size = tables.Int64Col(pos=5)
 
 		rawfile.create_vlarray('/', 'filenames', atom=tables.VLUnicodeAtom(), expectedrows=len(filenames))
-		rawfile.create_table('/', 'scans', description=Scan)
-		rawfile.create_earray('/', 'mzs', atom=tables.Float64Atom(), shape=shape, chunkshape=chunkshape)
-		rawfile.create_earray('/', 'Is', atom=tables.Int64Atom(), shape=shape, chunkshape=chunkshape)
+		rawfile.create_table('/', 'scans', description=Scan, expectedrows=len(filenames)*200)
+		rawfile.create_earray('/', 'mzs', atom=tables.Float64Atom((SCAN_SIZE,)), shape=(0,), expectedrows=len(filenames)*200)
+		rawfile.create_earray('/', 'Is', atom=tables.Int64Atom((SCAN_SIZE,)), shape=(0,), expectedrows=len(filenames)*200)
 
 		row = rawfile.root.scans.row
 
-		last_start = [0, 0]
-		last_size = 0
+		mzs = numpy.empty(SCAN_SIZE, numpy.float64)
+		Is = numpy.empty(SCAN_SIZE, numpy.int64)
+
+		idx = 0
 
 		# main loop
 		for count, filename in enumerate(filenames):
@@ -554,43 +559,33 @@ class App():
 			self.inputFile = filename
 			self.readData(array)
 
-			mzs_remain = numpy.array([])
-			Is_remain = numpy.array([])
-
 			# loop over spectra
 			for scan, spectrum in enumerate(array):
 				rt, spectrum = spectrum
+				size = len(spectrum)
+                assert size <= SCAN_SIZE, "SCAN_SIZE should be bigger then {}".format(size)
 				spectrum = numpy.array(spectrum).T
 				# TODO: .copy needed only for assert
-				mzs, Is = spectrum.copy()
+				mzs[:size], Is[:size] = spectrum.copy()
 				mzs[1:] = numpy.diff(mzs)
 				# TODO: it is checking numpy diff/cumsum. Probably not needed
-				assert numpy.all(numpy.cumsum(mzs) == spectrum[0])
+				assert numpy.all(numpy.cumsum(mzs[:size]) == spectrum[0])
+
+				mzs[size:] = 0
+				Is[size:] = 0
+
+				rawfile.root.mzs.append([mzs])
+				rawfile.root.Is.append([Is])
 
 				row['sample'] = count
 				row['scan'] = scan
 				row['rt'] = rt
-				last_start[0] += (last_start[1] + last_size) // stride
-				last_start[1] = (last_start[1] + last_size) % stride
-				row['start'] = last_start
-				row['size'] = last_size = len(mzs)
-
-				# prepend remains from last scan
-				mzs = numpy.hstack((mzs_remain, mzs))
-				Is = numpy.hstack((Is_remain, Is))
-
-				rawfile.root.mzs.append([mzs[i*stride:(i+1)*stride] for i in range(len(mzs)//stride)])
-				rawfile.root.Is.append([Is[i*stride:(i+1)*stride] for i in range(len(Is)//stride)])
+				row['idx'] = idx
+				row['size'] = size
 
 				row.append()
 
-				mzs_remain = mzs[len(mzs)//stride*stride:]
-				Is_remain = Is[len(mzs)//stride*stride:]
-
-			rawfile.root.mzs.append([numpy.hstack((mzs_remain, numpy.nan * numpy.arange(stride - len(mzs_remain))))])
-			rawfile.root.Is.append([numpy.hstack((Is_remain, numpy.zeros(stride - len(mzs_remain))))])
-
-			last_size += stride - len(mzs_remain)
+				idx += 1
 
 			rawfile.root.filenames.append(filename)
 
@@ -602,6 +597,8 @@ class App():
 
 		rawfile.close()
 		print "Finished converting."
+		end_time = time.time()
+		print "Batch convertion lasted for", (end_time - start_time) / 60., "minutes, or", (end_time - start_time) / len(filenames), "seconds per sample."
 		tkMessageBox.showinfo("Status Message","Batch Convert finished on "+str(datetime.now()))
 
 	def batchProcess(self,master):
@@ -2460,15 +2457,16 @@ class App():
 			#print "Finished processing "+str(self.inputFile)
 
 	def readPTData(self, array):
-		stride = 100000
 		i = self.inputFileIdx
 		scans = self.ptFile.root.scans.read_where("sample == i")
+		start, end = scans['idx'][[0, -1]]
+		end += 1
+		mzs = self.ptFile.root.mzs[start: end]
+		mzs = numpy.cumsum(mzs, axis=1)
+		Is = self.ptFile.root.Is[start: end]
 		for row in scans:
-			sample, scan, rt, art, (idx, offset), size = row
-			mzs = self.ptFile.root.mzs[idx:1+idx+(offset + size)//stride].flatten()[offset: (offset + size)]
-			mzs = numpy.cumsum(mzs)
-			Is = self.ptFile.root.Is[idx:1+idx+(offset + size)//stride].flatten()[offset: (offset + size)]
-			array.append((rt, numpy.vstack((mzs, Is)).T))
+			sample, scan, rt, art, idx, size = row
+			array.append((rt, numpy.vstack((mzs[scan, :size], Is[scan, :size])).T))
 
 	def refParser(self, ref):
 		"""Reads the reference file and fills the list 'ref' with names
