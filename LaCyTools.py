@@ -25,6 +25,8 @@ import tables
 #import timeit
 #import inspect
 
+tables.parameters.MAX_NUMEXPR_THREADS = None
+tables.parameters.MAX_BLOSC_THREADS = None
 
 # File Parameters
 EXTENSION = "*.mzXML"
@@ -342,6 +344,7 @@ class App():
 		self.alFile = ""
 		self.calFile = IntVar()
 		self.ptFile = None
+		self.rmMZXML = IntVar()
 		self.batchFolder = ""
 		self.batchProcessing = 0
 		self.batchWindow = 0
@@ -497,26 +500,21 @@ class App():
 		def batchButton():
 			master.openBatchFolder()
 			self.folder.set(master.batchFolder)
-		def ptButton():
-			master.openPTFile()
-			self.ptFileName.set(master.ptFile)
 		top = self.top = Toplevel()
 		top.protocol( "WM_DELETE_WINDOW", lambda: close(self))
 		self.batchDir = Button(top, text = "Batch Directory", width = 25, command = lambda: batchButton())
 		self.batchDir.grid(row = 0, column = 0, sticky = W)
 		self.batch = Label(top, textvariable = self.folder, width = 25)
 		self.batch.grid(row = 0, column = 1)
+		self.remove = Checkbutton(top, text = "Remove mzXML files", variable = master.rmMZXML, onvalue = 1, offvalue = 0)
+		self.remove.grid(row = 1, column = 0, sticky = W)
 		self.convertButton = Button(top, text = "Batch Convert to pyTables", width = 25, command = lambda: master.batchConvert(master))
-		self.convertButton.grid(row = 1, column = 0,columnspan = 2)
-		self.ptFileNameButton = Button(top, text = "pyTables File", width= 25, command = lambda: ptButton())
-		self.ptFileNameButton.grid(row = 2, column = 0, sticky = W)
-		self.ptFileNameLabel = Label(top, textvariable = self.ptFileName, width = 25)
-		self.ptFileNameLabel.grid(row = 2, column = 1)
-		
+		self.convertButton.grid(row = 2, column = 0,columnspan = 2)
+
 	def batchConvert(self,master):
 		""" TODO: COMMENT THIS FUNCTION PLEASE.
 		This function does x, using Y
-		
+
 		INPUT: stuff
 		OUTPUT: stuff
 		"""
@@ -555,10 +553,11 @@ class App():
 			self.readData(array)
 			# loop over spectra
 			for scan, spectrum in enumerate(array):
-				rt = spectrum[0]
-				mzs, Is = numpy.array(spectrum[1]).T
+				rt, spectrum = spectrum
+				spectrum = numpy.array(spectrum).T
+				mzs, Is = spectrum.copy()
 				mzs[1:] = numpy.diff(mzs)
-				assert numpy.all(numpy.cumsum(mzs) == numpy.array(spectrum[1]).T[0])
+				assert numpy.all(numpy.cumsum(mzs) == spectrum[0])
 
 				rawfile.root.mzs.append(mzs)
 				rawfile.root.Is.append(Is)
@@ -572,25 +571,35 @@ class App():
 				row.append()
 
 			rawfile.root.filenames.append(filename)
+			if self.rmMZXML.get() == 1:
+				try:
+					os.remove(filename)
+				except:
+					raise
 
-		rawfile.flush()
+		rawfile.close()
 		print "Finished converting."
+		tkMessageBox.showinfo("Status Message","Batch Convert finished on "+str(datetime.now()))
 
 	def batchProcess(self,master):
+		import time
+		start = time.time()
 		self.batch = True
 		# Check if reference or alignment file was selected
 		if self.refFile == "" and self.alFile == "" and self.calFile == "":
 			tkMessageBox.showinfo("File Error","No reference or alignment file selected")
 		if os.path.isfile(os.path.join(self.batchFolder,"pytables.h5")):
 			ptFileName = os.path.join(self.batchFolder,"pytables.h5")
-		if ptFileName != "":
 			if self.ptFile is None:
 				self.ptFile = tables.open_file(ptFileName, mode='a')
 			filenames = self.ptFile.root.filenames[:]
-			self.readData = self.readPTData
-			self.transform_mzXML = self.alignRTs
+			readData = self.readPTData
+			align = self.alignRTs
+			print 'Found "pytables.h5" in batch folder.'
 		else:
 			filenames = glob.glob(str(self.batchFolder)+"/*" + EXTENSION)
+			readData = self.readData
+			align = self.transform_mzXML
 		filenames2idx = dict([(filename, idx) for idx, filename in enumerate(filenames)])
 		# ALIGNMENT
 		if self.alFile != "":
@@ -602,7 +611,7 @@ class App():
 				timePairs = []
 				self.inputFile = file
 				self.inputFileIdx = filenames2idx[file]
-				self.readData(array)
+				readData(array)
 				for i in features:
 					peakTime = 0
 					peakIntensity = 0
@@ -684,7 +693,7 @@ class App():
 							for index,timePair in enumerate(timePairs):
 								falign.write(str(features[index][0])+"\t"+str(timePair[0])+"\t"+str(timePair[1])+"\t"+str(self.fitFunc(float(timePair[1]),*alignFunction[0]))+"\n")
 								lsq += float(features[index][0]) - self.fitFunc(float(timePair[1]),*alignFunction[0])
-						self.transform_mzXML(file,alignFunction[0])
+						align(file,alignFunction[0])
 					except TypeError:
 						if self.log == True:
 							with open('LaCyTools.log', 'a') as flog:
@@ -704,7 +713,7 @@ class App():
 				self.inputFile = file
 				self.inputFileIdx = filenames2idx[file]
 				array = []
-				self.readData(array)
+				readData(array)
 				times = []
 				for i in ref:
 					times.append(i[4])
@@ -777,6 +786,10 @@ class App():
 				self.writeResults(results,file)
 				master.batchProcess = 0
 			self.combineResults()
+		if self.ptFile is not None:
+			self.ptFile.close()
+		end = time.time()
+		print "Batch process lasted for", (end - start) / 60., "minutes"
 		tkMessageBox.showinfo("Status Message","Batch Process finished on "+str(datetime.now()))
 
 	def writeCalibration(self,function,array):
@@ -991,7 +1004,8 @@ class App():
 		"""Reads the mzXML file and transforms the reported retention
 		time by the specified polynomial function.
 		"""
-		with open (file,'r') as fr:
+		import pdb
+		with open(file,'r') as fr:
 			outFile = os.path.split(file)[-1]
 			outFile = "aligned_"+outFile
 			outFile = os.path.join(self.batchFolder,outFile)
@@ -999,9 +1013,16 @@ class App():
 			with open(outFile,'w') as fw:
 				for line in fr:
 					if 'retentionTime' in line:
-						time=line.split("\"")
-						if time[1][0] == 'P':
-							time = time[1][2:-1]
+						# FIX for different ordering
+						time=line.lstrip("<").rstrip(">\n")
+						time=time.split('="')
+						for s in time[:]:
+							time.extend(s.rsplit('" ', 1))
+						del time[:len(time)//3 + 1]
+						time = dict(zip(time[::2], time[1::2]))
+						time = time['retentionTime']
+						if time[0] == 'P':
+							time = time[2:-1]
 						# The below line is only to make it work with mzMine
 						if 	self.fitFunc(float(time),*polynomial) < 0:
 							newTime = str(0)
@@ -2033,31 +2054,22 @@ class App():
 		else:
 			setattr(self,'alFile',file_path)
 
-	def openPTFile(self):
-		""" PLACE HOLDER.
-		"""
-		file_path = tkFileDialog.askopenfilename()
-		if not file_path:
-			pass
-		else:
-			setattr(self,'ptFileName',file_path)
-
 	def processBlock(self, block, array):
 		""" This function processes a data block as taken from the input
 		file.
 		"""
-		"""if 'scan num' in block:
+		"""if "scan num" in block:
 			scan = block.split("scan num")[1]
 			scan = scan.split("\"")[1]
 		"""
 
-		if 'retentionTime' in block:
+		if "retentionTime" in block:
 			rt = block.split("retentionTime")[1]
 			rt = rt.split("\"")[1]
 			if rt[0] == 'P':
 				rt = rt[2:-1]
 
-		"""if 'peaksCount' in block:
+		"""if "peaksCount" in block:
 			peaks = block.split("peaksCount")[1]
 			peaks = peaks.split("\"")[1]
 		"""
@@ -2069,17 +2081,17 @@ class App():
 		else:
 			compression = False
 
-		if 'byteOrder' in block:
+		if "byteOrder" in block:
 			byteOrder = block.split("byteOrder")[1]
 			byteOrder = byteOrder.split("\"")[1]
 
-		if 'precision' in block:
+		if "precision" in block:
 			precision = block.split("precision")[1]
 			precision = precision.split("\"")[1]
 
 		# FIX pairOrder is Bruker format bending
-		if 'contentType' in block or 'pairOrder' in block:
-			peaks = block.split("m/z-int\">")[1]
+		if "contentType" in block or "pairOrder" in block:
+			peaks = block.split('"m/z-int">')[1]
 			peaks = peaks.split("</peaks>")[0]
 
 		if peaks:
