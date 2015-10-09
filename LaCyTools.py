@@ -518,7 +518,9 @@ class App():
 		INPUT: stuff
 		OUTPUT: stuff
 		"""
-		chunkshape = (100000,)
+		shape = (0, 100000)
+		stride = shape[1]
+		chunkshape = (100, stride)
 		filenames = glob.glob(str(self.batchFolder)+"/*" + EXTENSION)
 
 		print "Converting..."
@@ -532,18 +534,18 @@ class App():
 			sample = tables.Int64Col(pos=0)
 			scan = tables.Int64Col(pos=1)
 			rt = tables.Float64Col(pos=2)
-			art = tables.Float64Col(pos=3)
-			idx = tables.Int64Col(pos=4)
+			art = tables.Float64Col(pos=3)				# aligned retention time
+			start = tables.Int64Col(shape=(2,), pos=4)
 			size = tables.Int64Col(pos=5)
 
 		rawfile.create_vlarray('/', 'filenames', atom=tables.VLUnicodeAtom(), expectedrows=len(filenames))
-		rawfile.create_table('/', 'scans', description=Scan, chunkshape=chunkshape)
-		rawfile.create_earray('/', 'mzs', atom=tables.Float64Atom(), shape=(0,), chunkshape=chunkshape)
-		rawfile.create_earray('/', 'Is', atom=tables.Int64Atom(), shape=(0,), chunkshape=chunkshape)
+		rawfile.create_table('/', 'scans', description=Scan)
+		rawfile.create_earray('/', 'mzs', atom=tables.Float64Atom(), shape=shape, chunkshape=chunkshape)
+		rawfile.create_earray('/', 'Is', atom=tables.Int64Atom(), shape=shape, chunkshape=chunkshape)
 
 		row = rawfile.root.scans.row
 
-		last_idx = 0
+		last_start = [0, 0]
 		last_size = 0
 
 		# main loop
@@ -551,26 +553,47 @@ class App():
 			array = []
 			self.inputFile = filename
 			self.readData(array)
+
+			mzs_remain = numpy.array([])
+			Is_remain = numpy.array([])
+
 			# loop over spectra
 			for scan, spectrum in enumerate(array):
 				rt, spectrum = spectrum
 				spectrum = numpy.array(spectrum).T
+				# TODO: .copy needed only for assert
 				mzs, Is = spectrum.copy()
 				mzs[1:] = numpy.diff(mzs)
+				# TODO: it is checking numpy diff/cumsum. Probably not needed
 				assert numpy.all(numpy.cumsum(mzs) == spectrum[0])
-
-				rawfile.root.mzs.append(mzs)
-				rawfile.root.Is.append(Is)
 
 				row['sample'] = count
 				row['scan'] = scan
 				row['rt'] = rt
-				row['idx'] = last_idx = last_idx + last_size
+				last_start[0] += (last_start[1] + last_size) // stride
+				last_start[1] = (last_start[1] + last_size) % stride
+				row['start'] = last_start
 				row['size'] = last_size = len(mzs)
+
+				# prepend remains from last scan
+				mzs = numpy.hstack((mzs_remain, mzs))
+				Is = numpy.hstack((Is_remain, Is))
+
+				rawfile.root.mzs.append([mzs[i*stride:(i+1)*stride] for i in range(len(mzs)//stride)])
+				rawfile.root.Is.append([Is[i*stride:(i+1)*stride] for i in range(len(Is)//stride)])
 
 				row.append()
 
+				mzs_remain = mzs[len(mzs)//stride*stride:]
+				Is_remain = Is[len(mzs)//stride*stride:]
+
+			rawfile.root.mzs.append([numpy.hstack((mzs_remain, numpy.nan * numpy.arange(stride - len(mzs_remain))))])
+			rawfile.root.Is.append([numpy.hstack((Is_remain, numpy.zeros(stride - len(mzs_remain))))])
+
+			last_size += stride - len(mzs_remain)
+
 			rawfile.root.filenames.append(filename)
+
 			if self.rmMZXML.get() == 1:
 				try:
 					os.remove(filename)
@@ -2437,13 +2460,14 @@ class App():
 			#print "Finished processing "+str(self.inputFile)
 
 	def readPTData(self, array):
+		stride = 100000
 		i = self.inputFileIdx
 		scans = self.ptFile.root.scans.read_where("sample == i")
 		for row in scans:
-			sample, scan, rt, art, idx, size = row
-			mzs = self.ptFile.root.mzs[idx:idx+size]
+			sample, scan, rt, art, (idx, offset), size = row
+			mzs = self.ptFile.root.mzs[idx:1+idx+(offset + size)//stride].flatten()[offset: (offset + size)]
 			mzs = numpy.cumsum(mzs)
-			Is = self.ptFile.root.Is[idx:idx+size]
+			Is = self.ptFile.root.Is[idx:1+idx+(offset + size)//stride].flatten()[offset: (offset + size)]
 			array.append((rt, numpy.vstack((mzs, Is)).T))
 
 	def refParser(self, ref):
