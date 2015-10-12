@@ -1068,7 +1068,7 @@ class App():
 		self.ptFile.flush()
 
 	def feature_finder(self,data,lowMass,highMass):
-		"""Reads the current spectrum and returns the maximum
+		""" Reads the current spectrum and returns the maximum
 		intensity of searched feature"""
 		intensity = 0
 		for i in data:
