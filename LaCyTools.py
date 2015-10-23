@@ -49,14 +49,14 @@ MASS_MODIFIERS = []				# The mass modifiers refer to changes to the analyte.
 								# Charge carrier should NOT go here (the program assumes that your analytes are protonated)
 
 # Extraction Parameters
-EXTRACTION_TYPE = 2 			# 1 = Max, 0 = Total and 2 = Area
+EXTRACTION_TYPE = 2				# 1 = Max, 0 = Total and 2 = Area
 MASS_WINDOW = 0.2				# The +/- mass (not m/z) window used around each feature for extraction
 TIME_WINDOW = 8					# The +/- time window that will be used around a cluster, to create the sum spectrum
 MIN_CHARGE = 2					# The minimum charge state that the program will integrate for all features (unless overwritten in the composition file)
 MAX_CHARGE = 3					# The maximum charge state that the program will integrate for all features (unless overwritten in the composition file)
-#MIN_CONTRIBUTION = 0.01 		# Minimum contribution to isotopic distrubition to be included (NOT BEING USED ATM)
+#MIN_CONTRIBUTION = 0.01		# Minimum contribution to isotopic distrubition to be included (NOT BEING USED ATM)
 MIN_TOTAL = 0.99				# Desired contribution of extracted isotopes of total isotopic pattern
-BACKGROUND_WINDOW = 10 			# Total m/z window (+ and -) to search for background
+BACKGROUND_WINDOW = 10			# Total m/z window (+ and -) to search for background
 
 # The maximum distance between distinct isotopic masses to be 'pooled'
 EPSILON = 0.5					# DO NOT TOUCH THIS UNLESS YOU KNOW WTF YOU ARE DOING! Read below if you truly want to know the meaning:
@@ -256,7 +256,7 @@ BLOCKS = {	'F':{'mass':146.05790879894,
 				'oxygens':1,
 				'sulfurs':0},
 			# Immunoglobulins
-			'IgGI':{'mass':1188.5047, 	# Get exacter mass
+			'IgGI':{'mass':1188.5047,	# Get exacter mass
 				'carbons':50,
 				'hydrogens':72,
 				'nitrogens':14,
@@ -522,11 +522,26 @@ class App():
 		OUTPUT: stuff
 		"""
 		import time
+		import random
 
 		start_time = time.time()
-		filenames = glob.glob(str(self.batchFolder)+"/*" + EXTENSION)
-
 		print "Converting..."
+
+		filenames = glob.glob(str(self.batchFolder)+"/*" + EXTENSION)
+		SCAN_SIZE = 0
+
+		for filename in random.sample(filenames, min(3, len(filenames))):
+			array = []
+			self.inputFile = filename
+			self.readData(array)
+
+			# loop over spectra
+			for spectrum in array:
+				rt, spectrum = spectrum
+				SCAN_SIZE = max(SCAN_SIZE, len(spectrum))
+
+		#SCAN_SIZE = 10 ** (math.ceil(math.log10(SCAN_SIZE) * 10) / 10)
+
 		try:
 			rawfile = tables.open_file(os.path.join(self.batchFolder, "pytables.h5"), "w", filters=tables.Filters(complevel=1, complib="blosc:lz4"))
 		except tables.HDF5ExtError:
@@ -563,7 +578,7 @@ class App():
 			for scan, spectrum in enumerate(array):
 				rt, spectrum = spectrum
 				size = len(spectrum)
-                assert size <= SCAN_SIZE, "SCAN_SIZE should be bigger then {}".format(size)
+				assert size <= SCAN_SIZE, "SCAN_SIZE should be bigger then {}".format(size)
 				spectrum = numpy.array(spectrum).T
 				# TODO: .copy needed only for assert
 				mzs[:size], Is[:size] = spectrum.copy()
@@ -967,7 +982,7 @@ class App():
 		arraySize = (float(HIGH_MZ) - float(LOW_MZ)) * float(SUM_SPECTRUM_RESOLUTION)
 		combinedSpectra = numpy.zeros(shape=(arraySize+2,2))
 		bins = []
-  		for index, i in enumerate(combinedSpectra):
+		for index, i in enumerate(combinedSpectra):
 			i[0] = float(LOW_MZ) + index*(float(1)/float(SUM_SPECTRUM_RESOLUTION))
 			bins.append(float(LOW_MZ) + index*(float(1)/float(SUM_SPECTRUM_RESOLUTION)))
 		fullSet = []
@@ -1044,7 +1059,7 @@ class App():
 						if time[0] == 'P':
 							time = time[2:-1]
 						# The below line is only to make it work with mzMine
-						if 	self.fitFunc(float(time),*polynomial) < 0:
+						if	self.fitFunc(float(time),*polynomial) < 0:
 							newTime = str(0)
 						else:
 							newTime = str(self.fitFunc(float(time),*polynomial))
@@ -1062,7 +1077,7 @@ class App():
 		for row in self.ptFile.root.scans.where("sample == i"):
 			time = row['rt']
 			# The below line is only to make it work with mzMine
-			if 	self.fitFunc(time,*polynomial) > 0:
+			if	self.fitFunc(time,*polynomial) > 0:
 				row['art'] = self.fitFunc(time,*polynomial)
 			row.update()
 		self.ptFile.flush()
@@ -2117,7 +2132,7 @@ class App():
 		if peaks:
 			self.mzXMLDecoder(rt, peaks, precision, compression, byteOrder, array)
 
-    ######################################################
+	######################################################
 	# START OF FUNCTIONS RELATED TO PARSING ANALYTE FILE #
 	######################################################
 	def getChanceNetwork(self,(mass,carbons,hydrogens,nitrogens,oxygens17,oxygens18,sulfurs33,sulfurs34,sulfurs36)):
@@ -2361,7 +2376,7 @@ class App():
 						y_points.append(array[k][1])
 					######################################################################
 					# Only spend time on doing this if we actually wanted the PPM Errors #
-					# This is not being used yet, but should!                            #
+					# This is not being used yet, but should!							 #
 					######################################################################
 					if self.ppmQC.get() == 1:
 						try:
