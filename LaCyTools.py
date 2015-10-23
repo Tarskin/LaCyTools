@@ -64,9 +64,6 @@ BACKGROUND_WINDOW = 10			# Total m/z window (+ and -) to search for background
 EPSILON = 0.5					# DO NOT TOUCH THIS UNLESS YOU KNOW WTF YOU ARE DOING! Read below if you truly want to know the meaning:
 								# This value represents the maximum distance (in Da) for which the element specific isotopic mass defect will be combined
 
-# max number of m/z intensity pairs per scan
-SCAN_SIZE = 140000
-
 # Isotopic Mass Differences
 C = [('13C',0.0107,1.00335)]
 H = [('2H',0.00012,1.00628)]
@@ -525,9 +522,9 @@ class App():
 		"""
 		import time
 		import random
+		print "Determining SCAN_SIZE..."
 
 		start_time = time.time()
-		print "Converting..."
 
 		filenames = glob.glob(str(self.batchFolder)+"/*" + EXTENSION)
 		SCAN_SIZE = 0
@@ -544,6 +541,7 @@ class App():
 
 		#SCAN_SIZE = 10 ** (math.ceil(math.log10(SCAN_SIZE) * 10) / 10)
 
+		print "Converting..."
 		try:
 			rawfile = tables.open_file(os.path.join(self.batchFolder, "pytables.h5"), "w", filters=tables.Filters(complevel=1, complib="blosc:lz4"))
 		except tables.HDF5ExtError:
@@ -631,13 +629,13 @@ class App():
 				self.ptFile = tables.open_file(ptFileName, mode='a')
 			alignmentFiles = self.ptFile.root.filenames[:]
 			extractionFiles = self.ptFile.root.filenames[:]
-			readData = self.readPTData
+			self.readData2 = self.readPTData
 			align = self.alignRTs
 			print 'Found "pytables.h5" in batch folder.'
 		else:
 			alignmentFiles = glob.glob(str(self.batchFolder)+"/*"+EXTENSION)
 			extractionFiles = glob.glob(str(self.batchFolder)+"/"+EXTRACTION+"*"+EXTENSION)
-			readData = self.readData
+			#readData = self.readData
 			align = self.transform_mzXML
 		a = dict([(filename, idx) for idx, filename in enumerate(alignmentFiles)])
 		b = dict([(filename, idx) for idx, filename in enumerate(extractionFiles)])
@@ -2488,16 +2486,16 @@ class App():
 				if started == True:
 					block +=line
 				if '</scan>' in line and header == False and started == True:
-					self.processBlock(block, array)
+					self.processBlock(block, array, [(0, sys.float_info.max)])
 					started = False
 					block = ""
 			#print "Finished processing "+str(self.inputFile)
 
 	def matchFeatureTimes(self, features):
 		""" This function takes a list of features/times and combines
-		them into a singe list, usefull for reading only relevant
+		them into a singe list, useful for reading only relevant
 		scans later in the program.
-		
+
 		INPUT: A list of (m/z,rt) tuples
 		OUTPUT: A list of (rt,rt) tuples
 		"""
@@ -2513,12 +2511,12 @@ class App():
 				current = (float(i[1])-ALIGNMENT_BACKGROUND_MULTIPLIER*ALIGNMENT_TIME_WINDOW, float(i[1])+ALIGNMENT_BACKGROUND_MULTIPLIER*ALIGNMENT_TIME_WINDOW)
 		wanted.append(current)
 		return wanted
-	
+
 	def matchAnalyteTimes(self, ref):
 		""" This function takes a list of references and creates a list
 		of time tuples, that is needed to read only relevant scans later
 		in the program.
-		
+
 		INPUT: A list of references (name, mz, int, window and so forth)
 		OUTPUT: A list of (rt,rt) tuples
 		"""
@@ -2564,17 +2562,22 @@ class App():
 					block = ""
 			#print "Finished processing "+str(self.inputFile)
 
-	def readPTData(self, array):
+	def readPTData(self, array, readTimes):
+		print "Processing "+str(self.inputFile)
 		i = self.inputFileIdx
 		scans = self.ptFile.root.scans.read_where("sample == i")
-		start, end = scans['idx'][[0, -1]]
-		end += 1
-		mzs = self.ptFile.root.mzs[start: end]
-		mzs = numpy.cumsum(mzs, axis=1)
-		Is = self.ptFile.root.Is[start: end]
-		for row in scans:
+		valid = numpy.zeros(len(scans), bool)
+		for s, e in scans['rt'].searchsorted(readTimes):
+			valid[s:e] = True
+
+		for row in scans[valid]:
 			sample, scan, rt, art, idx, size = row
-			array.append((rt, numpy.vstack((mzs[scan, :size], Is[scan, :size])).T))
+			mzs = self.ptFile.root.mzs[idx][:size]
+			mzs = numpy.cumsum(mzs)
+			Is = self.ptFile.root.Is[idx][:size]
+			if art != 0:
+				rt = art
+			array.append((rt, numpy.vstack((mzs, Is)).T))
 
 	def refParser(self, ref):
 		"""Reads the reference file and fills the list 'ref' with names
