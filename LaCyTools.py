@@ -30,7 +30,7 @@ tables.parameters.MAX_BLOSC_THREADS = None
 
 # File Parameters
 EXTENSION = ".mzXML"
-EXTRACTION = "aligned"
+EXTRACTION = "aligned"			# Not implemented yet
 OUTPUT = "Summary.txt"
 
 # Alignment Parameters
@@ -623,36 +623,31 @@ class App():
 		# Check if reference or alignment file was selected
 		if self.refFile == "" and self.alFile == "" and self.calFile == "":
 			tkMessageBox.showinfo("File Error","No reference or alignment file selected")
+		# Check for pytables file
 		if os.path.isfile(os.path.join(self.batchFolder,"pytables.h5")):
 			ptFileName = os.path.join(self.batchFolder,"pytables.h5")
 			if self.ptFile is None:
 				self.ptFile = tables.open_file(ptFileName, mode='a')
-			alignmentFiles = self.ptFile.root.filenames[:]
-			extractionFiles = self.ptFile.root.filenames[:]
-			self.readData2 = self.readPTData
+			filenames = self.ptFile.root.filenames[:]
+			self.readData = self.readPTData
 			align = self.alignRTs
 			print 'Found "pytables.h5" in batch folder.'
 		else:
-			alignmentFiles = glob.glob(str(self.batchFolder)+"/*"+EXTENSION)
-			extractionFiles = glob.glob(str(self.batchFolder)+"/"+EXTRACTION+"*"+EXTENSION)
-			#readData = self.readData
+			filenames = glob.glob(str(self.batchFolder)+"/*"+EXTENSION)
 			align = self.transform_mzXML
-		a = dict([(filename, idx) for idx, filename in enumerate(alignmentFiles)])
-		b = dict([(filename, idx) for idx, filename in enumerate(extractionFiles)])
-		filenames2idx = a.copy()
-		filenames2idx.update(b)
+		filenames2idx = dict([(filename, idx) for idx, filename in enumerate(filenames)])
 		# ALIGNMENT
 		if self.alFile != "":
 			features = []
 			features = self.feature_reader(self.alFile)
 			features = sorted(features, key = lambda tup: tup[1])
-			for file in alignmentFiles:
+			for file in filenames:
 				array = []
 				timePairs = []
 				self.inputFile = file
 				self.inputFileIdx = filenames2idx[file]
 				readTimes = self.matchFeatureTimes(features)
-				self.readData2(array,readTimes)
+				self.readData(array,readTimes)
 				for i in features:
 					peakTime = 0
 					peakIntensity = 0
@@ -758,22 +753,13 @@ class App():
 					chunks['%s' % i] = []
 			for i in ref:
 				chunks['%s' % i[4]].append(i)
-			for file in extractionFiles:
+			for file in filenames:
 				results = []
 				self.inputFile = file
 				self.inputFileIdx = filenames2idx[file]
 				array = []
 				readTimes = self.matchAnalyteTimes(ref)
-				self.readData2(array, readTimes)
-				"""times = []
-				for i in ref:
-					times.append(i[4])
-				chunks = collections.OrderedDict()
-				for i in times:
-					if i not in chunks.keys():
-						chunks['%s' % i] = []
-				for i in ref:
-					chunks['%s' % i[4]].append(i)"""
+				self.readData(array, readTimes)
 				for index,i in enumerate(chunks.keys()):
 					spectrum = self.sumSpectrum(i,array)
 					calibrants = []
@@ -2465,32 +2451,6 @@ class App():
 				backgroundArea = avgBackground
 		return (backgroundPoint,backgroundArea,noise)
 
-	def readData(self, array):
-		""" This function reads mzXML files and has the scans decoded on
-		a per scan basis. The scans are identified by getting the line
-		number of the beginning and ending tag for a scan.
-
-		INPUT: file handle
-		OUTPUT: TBA
-		"""
-		header = True
-		started = False
-		block = ""
-		with open(self.inputFile,'r') as fr:
-			print "Processing "+str(self.inputFile)
-			for number, line in enumerate(fr):
-				if '</dataProcessing>' in line:
-					header = False
-				if '<scan num="' in line and header == False:
-					started = True
-				if started == True:
-					block +=line
-				if '</scan>' in line and header == False and started == True:
-					self.processBlock(block, array, [(0, sys.float_info.max)])
-					started = False
-					block = ""
-			#print "Finished processing "+str(self.inputFile)
-
 	def matchFeatureTimes(self, features):
 		""" This function takes a list of features/times and combines
 		them into a singe list, useful for reading only relevant
@@ -2533,10 +2493,7 @@ class App():
 		wanted.append(current)
 		return wanted
 
-	######################
-	# PROTOTYPE FUNCTION #
-	######################
-	def readData2(self, array, readTimes):
+	def readData(self, array, readTimes):
 		""" This function reads mzXML files and has the scans decoded on
 		a per scan basis. The scans are identified by getting the line
 		number of the beginning and ending tag for a scan.
