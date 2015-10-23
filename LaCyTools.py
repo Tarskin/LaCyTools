@@ -29,20 +29,22 @@ tables.parameters.MAX_NUMEXPR_THREADS = None
 tables.parameters.MAX_BLOSC_THREADS = None
 
 # File Parameters
-EXTENSION = "*.mzXML"
+EXTENSION = ".mzXML"
+EXTRACTION = "aligned"
 OUTPUT = "Summary.txt"
 
 # Alignment Parameters
 ALIGNMENT_TIME_WINDOW = 10		# The +/- time window that the program is allowed to look for the feature for alignment (EIC time axis)
 ALIGNMENT_MASS_WINDOW = 0.1		# The +/- m/z window (not charge state corrected) that is used to detect the feature used for alignment. Afterwards a spline fit is used to detect the measured time
+ALIGNMENT_BACKGROUND_MULTIPLIER = 2	# The multiplier of the timewindow used for background determination
 ALIGNMENT_S_N_CUTOFF = 9		# The minimum S/N value of a feature to be used for alignment
 ALIGNMENT_MIN_PEAK = 7			# The minimum number of features used for alignment
 
 # Calibration Parameters
 SUM_SPECTRUM_RESOLUTION = 100	# Number of data points per 1 whole m/z unit
-CALIB_MASS_WINDOW = 0.3			# This value represents the width in Da as if an analyte was singly charged
+CALIB_MASS_WINDOW = 0.3			# This +/- mass window used to detect the accurate mass of a calibra
 CALIB_S_N_CUTOFF = 9			# The minimum S/N value of a feature to be used for calibration
-CALIB_MIN_PEAK =5				# Minimum number of calibrants
+CALIB_MIN_PEAK = 5				# Minimum number of calibrants
 
 # PARAMETERS
 MASS_MODIFIERS = []				# The mass modifiers refer to changes to the analyte.
@@ -50,7 +52,7 @@ MASS_MODIFIERS = []				# The mass modifiers refer to changes to the analyte.
 
 # Extraction Parameters
 EXTRACTION_TYPE = 2				# 1 = Max, 0 = Total and 2 = Area
-MASS_WINDOW = 0.2				# The +/- mass (not m/z) window used around each feature for extraction
+MASS_WINDOW = 0.2				# The +/- m/z window used around each feature for extraction
 TIME_WINDOW = 8					# The +/- time window that will be used around a cluster, to create the sum spectrum
 MIN_CHARGE = 2					# The minimum charge state that the program will integrate for all features (unless overwritten in the composition file)
 MAX_CHARGE = 3					# The maximum charge state that the program will integrate for all features (unless overwritten in the composition file)
@@ -627,26 +629,32 @@ class App():
 			ptFileName = os.path.join(self.batchFolder,"pytables.h5")
 			if self.ptFile is None:
 				self.ptFile = tables.open_file(ptFileName, mode='a')
-			filenames = self.ptFile.root.filenames[:]
+			alignmentFiles = self.ptFile.root.filenames[:]
+			extractionFiles = self.ptFile.root.filenames[:]
 			readData = self.readPTData
 			align = self.alignRTs
 			print 'Found "pytables.h5" in batch folder.'
 		else:
-			filenames = glob.glob(str(self.batchFolder)+"/*" + EXTENSION)
+			alignmentFiles = glob.glob(str(self.batchFolder)+"/*"+EXTENSION)
+			extractionFiles = glob.glob(str(self.batchFolder)+"/"+EXTRACTION+"*"+EXTENSION)
 			readData = self.readData
 			align = self.transform_mzXML
-		filenames2idx = dict([(filename, idx) for idx, filename in enumerate(filenames)])
+		a = dict([(filename, idx) for idx, filename in enumerate(alignmentFiles)])
+		b = dict([(filename, idx) for idx, filename in enumerate(extractionFiles)])
+		filenames2idx = a.copy()
+		filenames2idx.update(b)
 		# ALIGNMENT
 		if self.alFile != "":
 			features = []
 			features = self.feature_reader(self.alFile)
 			features = sorted(features, key = lambda tup: tup[1])
-			for file in filenames:
+			for file in alignmentFiles:
 				array = []
 				timePairs = []
 				self.inputFile = file
 				self.inputFileIdx = filenames2idx[file]
-				readData(array)
+				readTimes = self.matchFeatureTimes(features)
+				self.readData2(array,readTimes)
 				for i in features:
 					peakTime = 0
 					peakIntensity = 0
@@ -743,13 +751,23 @@ class App():
 			self.initCompositionMasses(self.refFile)
 			ref = []
 			self.refParser(ref)
-			for file in filenames:
+			times = []
+			for i in ref:
+				times.append(i[4])
+			chunks = collections.OrderedDict()
+			for i in times:
+				if i not in chunks.keys():
+					chunks['%s' % i] = []
+			for i in ref:
+				chunks['%s' % i[4]].append(i)
+			for file in extractionFiles:
 				results = []
 				self.inputFile = file
 				self.inputFileIdx = filenames2idx[file]
 				array = []
-				readData(array)
-				times = []
+				readTimes = self.matchAnalyteTimes(ref)
+				self.readData2(array, readTimes)
+				"""times = []
 				for i in ref:
 					times.append(i[4])
 				chunks = collections.OrderedDict()
@@ -757,7 +775,7 @@ class App():
 					if i not in chunks.keys():
 						chunks['%s' % i] = []
 				for i in ref:
-					chunks['%s' % i[4]].append(i)
+					chunks['%s' % i[4]].append(i)"""
 				for index,i in enumerate(chunks.keys()):
 					spectrum = self.sumSpectrum(i,array)
 					calibrants = []
@@ -969,6 +987,7 @@ class App():
 		""" This function creates a summed spectrum and returns the
 		resulting spectrum back to the calling function.
 		"""
+		# This is returning None's now
 		lowTime = self.binarySearch(array,float(time)-TIME_WINDOW,len(array)-1,'left')
 		highTime = self.binarySearch(array,float(time)+TIME_WINDOW,len(array)-1,'right')
 		LOW_MZ = 25000.0
@@ -1039,7 +1058,6 @@ class App():
 		"""Reads the mzXML file and transforms the reported retention
 		time by the specified polynomial function.
 		"""
-		import pdb
 		with open(file,'r') as fr:
 			outFile = os.path.split(file)[-1]
 			outFile = "aligned_"+outFile
@@ -1048,14 +1066,12 @@ class App():
 			with open(outFile,'w') as fw:
 				for line in fr:
 					if 'retentionTime' in line:
-						# FIX for different ordering
-						time=line.lstrip("<").rstrip(">\n")
-						time=time.split('="')
-						for s in time[:]:
-							time.extend(s.rsplit('" ', 1))
-						del time[:len(time)//3 + 1]
-						time = dict(zip(time[::2], time[1::2]))
-						time = time['retentionTime']
+						time = line.strip()
+						time = time.split("\"")
+						for index,i in enumerate(time):
+							if 'retentionTime' in i:
+								time=time[index+1]
+								break
 						if time[0] == 'P':
 							time = time[2:-1]
 						# The below line is only to make it work with mzMine
@@ -1083,7 +1099,7 @@ class App():
 		self.ptFile.flush()
 
 	def feature_finder(self,data,lowMass,highMass):
-		"""Reads the current spectrum and returns the maximum
+		""" Reads the current spectrum and returns the maximum
 		intensity of searched feature"""
 		intensity = 0
 		for i in data:
@@ -2089,7 +2105,7 @@ class App():
 		else:
 			setattr(self,'alFile',file_path)
 
-	def processBlock(self, block, array):
+	def processBlock(self, block, array, readTimes):
 		""" This function processes a data block as taken from the input
 		file.
 		"""
@@ -2130,7 +2146,13 @@ class App():
 			peaks = peaks.split("</peaks>")[0]
 
 		if peaks:
-			self.mzXMLDecoder(rt, peaks, precision, compression, byteOrder, array)
+			flag = 0
+			for i in readTimes:
+				if float(rt) > i[0] and float(rt) < i[1]:
+					self.mzXMLDecoder(rt, peaks, precision, compression, byteOrder, array)
+					flag = 1
+			if flag == 0:
+				array.append((float(rt),None))
 
 	######################################################
 	# START OF FUNCTIONS RELATED TO PARSING ANALYTE FILE #
@@ -2467,6 +2489,77 @@ class App():
 					block +=line
 				if '</scan>' in line and header == False and started == True:
 					self.processBlock(block, array)
+					started = False
+					block = ""
+			#print "Finished processing "+str(self.inputFile)
+
+	def matchFeatureTimes(self, features):
+		""" This function takes a list of features/times and combines
+		them into a singe list, usefull for reading only relevant
+		scans later in the program.
+		
+		INPUT: A list of (m/z,rt) tuples
+		OUTPUT: A list of (rt,rt) tuples
+		"""
+		wanted = []
+		features = sorted(features, key=lambda x:x[1])
+		current = (float(features[0][1])-ALIGNMENT_BACKGROUND_MULTIPLIER*ALIGNMENT_TIME_WINDOW, float(features[0][1])+ALIGNMENT_BACKGROUND_MULTIPLIER*ALIGNMENT_TIME_WINDOW)
+		for i in features:
+			if float(i[1])-ALIGNMENT_BACKGROUND_MULTIPLIER*ALIGNMENT_TIME_WINDOW >= current[0] and float(i[1])-ALIGNMENT_BACKGROUND_MULTIPLIER*ALIGNMENT_TIME_WINDOW < current[1]:
+				if float(i[1])+ALIGNMENT_BACKGROUND_MULTIPLIER*ALIGNMENT_TIME_WINDOW > current[1]:
+					current = (current[0],float(i[1])+ALIGNMENT_BACKGROUND_MULTIPLIER*ALIGNMENT_TIME_WINDOW)
+			else:
+				wanted.append(current)
+				current = (float(i[1])-ALIGNMENT_BACKGROUND_MULTIPLIER*ALIGNMENT_TIME_WINDOW, float(i[1])+ALIGNMENT_BACKGROUND_MULTIPLIER*ALIGNMENT_TIME_WINDOW)
+		wanted.append(current)
+		return wanted
+	
+	def matchAnalyteTimes(self, ref):
+		""" This function takes a list of references and creates a list
+		of time tuples, that is needed to read only relevant scans later
+		in the program.
+		
+		INPUT: A list of references (name, mz, int, window and so forth)
+		OUTPUT: A list of (rt,rt) tuples
+		"""
+		wanted = []
+		ref = sorted(ref,key=lambda x:x[4])
+		current = (float(ref[0][4])-float(ref[0][5]), float(ref[0][4])+float(ref[0][5]))
+		for i in ref:
+			if float(i[4])-float(i[5]) >= current[0] and float(i[4])-float(i[5]) < current[1]:
+				if float(i[4])+float(i[5]) > current[1]:
+					current = (current[0],float(i[4])+float(i[5]))
+			else:
+				wanted.append(current)
+				current= (float(i[4])-float(i[5]), float(i[4])+float(i[5]))
+		wanted.append(current)
+		return wanted
+
+	######################
+	# PROTOTYPE FUNCTION #
+	######################
+	def readData2(self, array, readTimes):
+		""" This function reads mzXML files and has the scans decoded on
+		a per scan basis. The scans are identified by getting the line
+		number of the beginning and ending tag for a scan.
+
+		INPUT: file handle
+		OUTPUT: TBA
+		"""
+		header = True
+		started = False
+		block = ""
+		with open(self.inputFile,'r') as fr:
+			print "Processing "+str(self.inputFile)
+			for number, line in enumerate(fr):
+				if '</dataProcessing>' in line:
+					header = False
+				if '<scan num="' in line and header == False:
+					started = True
+				if started == True:
+					block +=line
+				if '</scan>' in line and header == False and started == True:
+					self.processBlock(block, array, readTimes)
 					started = False
 					block = ""
 			#print "Finished processing "+str(self.inputFile)
