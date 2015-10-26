@@ -442,14 +442,27 @@ class App():
 			#############
 			# Plot Code #
 			#############
-			newX = numpy.linspace(-100,500,2500)
+			minX = min(expected)-0.1*min(expected)
+			maxX = max(expected)+0.1*max(expected)
+			newX = numpy.linspace(minX,maxX,2500)
+			linY = newX
 			yNew = self.fitFunc(newX,*z[0])
-			fig =  plt.figure()
+			minY = self.fitFunc(minX,*z[0])
+			maxY = self.fitFunc(maxX,*z[0])
+			fig =  plt.figure(figsize=(8,6))
 			ax = fig.add_subplot(111)
-			plt.scatter(expected,observed,label='raw')
-			plt.plot(newX,yNew,label='Fit, Params: '+str(z[0]))
-			plt.legend()
-			fig.savefig(name)
+			plt.scatter(expected,observed,c='b',label='raw',alpha=0.5)
+			observedCalibrated = []
+			for index, j in enumerate(observed):
+				observedCalibrated.append(self.fitFunc(j,*z[0]))
+			plt.scatter(expected,observedCalibrated,c='r',label='calibrated',alpha=0.5)
+			numbers = ["%.2f" % number for number in z[0]]
+			plt.plot(newX,yNew,label='Fit, Function: '+str(numbers[0])+"x"+"$^{"+str(numbers[1])+"}$+"+str(numbers[2]),c='b')
+			plt.plot(newX,linY,label='Target',c='r')
+			plt.legend(loc='best')
+			plt.xlim(minX,maxX)
+			plt.ylim(minY,maxY)
+			fig.savefig(name,dpi=800)
 			plt.close()
 			###############
 			# end of plot #
@@ -457,38 +470,6 @@ class App():
 		except RuntimeError:
 			z = None
 		return z
-
-	# TODO: Check if this entire function can now be dropped?
-	def calcPolynomial(self,data):
-		""" Plots the set of timepoints (expected and observed) to
-		visualize how well the alignment would fit.
-		"""
-		expected = []
-		observed = []
-		for i in data:
-			expected.append(i[0])
-			observed.append(i[1])
-		# The following lines are for the spline (once I figure it out)
-		# The following lines are for the Numpy.Polyfit
-		z = numpy.polyfit(observed,expected,2)
-		f = numpy.poly1d(z)
-		#############
-		# Plot Code #
-		#############
-		newX = numpy.linspace(0,500,1000)
-		yNew = f(newX)
-		fig =  plt.figure()
-		ax = fig.add_subplot(111)
-		plt.scatter(expected,observed,label='raw')
-		plt.plot(newX,yNew,label='obs-exp')
-		a = scipy.optimize.root(f,numpy.array([0,0]))
-		plt.axvline(x=a.x[0])
-		plt.legend()
-		plt.show()
-		###############
-		# end of plot #
-		###############
-		return f
 
 	def dataPopup(self,master):
 		if master.dataWindow == 1:
@@ -1234,7 +1215,7 @@ class App():
 				fw.write("MIN_CHARGE\t"+str(MIN_CHARGE)+"\n")
 				fw.write("MAX_CHARGE\t"+str(MAX_CHARGE)+"\n")
 				fw.write("MIN_TOTAL\t"+str(MIN_TOTAL)+"\n")
-				fw.write("BACKGROUND_WINDOW\t"+str(BACKGROUND_WINDOW)+"\n")
+				fw.write("BACKGROUND_WINDOW\t"+str(BACKGROUND_WINDOW)+"\n\n")
 			##############################
 			# Analyte Absolute Intensity #
 			##############################
