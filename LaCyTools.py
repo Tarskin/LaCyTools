@@ -738,7 +738,7 @@ class App():
 				else:
 					print "File not aligned due to lack of features"
 					outFile = os.path.split(file)[-1]
-					outFile = "aligned_"+outFile
+					outFile = "unaligned_"+outFile
 					outFile = os.path.join(self.batchFolder,outFile)
 					open(outFile,'w').close()
 		# (CALIBRATION AND) EXTRACTION
