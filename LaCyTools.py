@@ -30,7 +30,7 @@ tables.parameters.MAX_BLOSC_THREADS = None
 
 # File Parameters
 EXTENSION = ".mzXML"
-EXTRACTION = "aligned"			# Not implemented yet
+EXTRACTION = "aligned"
 OUTPUT = "Summary.txt"
 
 # Alignment Parameters
@@ -630,22 +630,22 @@ class App():
 				self.ptFile = tables.open_file(ptFileName, mode='a')
 			filenames = self.ptFile.root.filenames[:]
 			self.readData = self.readPTData
-			align = self.alignRTs
+			self.transform_mzXML = self.alignRTs
+			filenames2idx = dict([(filename, idx) for idx, filename in enumerate(filenames)])
 			print 'Found "pytables.h5" in batch folder.'
-		else:
-			filenames = glob.glob(str(self.batchFolder)+"/*"+EXTENSION)
-			align = self.transform_mzXML
-		filenames2idx = dict([(filename, idx) for idx, filename in enumerate(filenames)])
 		# ALIGNMENT
 		if self.alFile != "":
 			features = []
 			features = self.feature_reader(self.alFile)
 			features = sorted(features, key = lambda tup: tup[1])
+			if os.path.isfile(os.path.join(self.batchFolder,"pytables.h5")) == False:
+				filenames = glob.glob(os.path.join(str(self.batchFolder),"*"+EXTENSION))
 			for file in filenames:
 				array = []
 				timePairs = []
 				self.inputFile = file
-				self.inputFileIdx = filenames2idx[file]
+				if os.path.isfile(os.path.join(self.batchFolder,"pytables.h5")):
+					self.inputFileIdx = filenames2idx[file]
 				readTimes = self.matchFeatureTimes(features)
 				self.readData(array,readTimes)
 				for i in features:
@@ -729,7 +729,7 @@ class App():
 							for index,timePair in enumerate(timePairs):
 								falign.write(str(features[index][0])+"\t"+str(timePair[0])+"\t"+str(timePair[1])+"\t"+str(self.fitFunc(float(timePair[1]),*alignFunction[0]))+"\n")
 								lsq += float(features[index][0]) - self.fitFunc(float(timePair[1]),*alignFunction[0])
-						align(file,alignFunction[0])
+						self.transform_mzXML(file,alignFunction[0])
 					except TypeError:
 						if self.log == True:
 							with open('LaCyTools.log', 'a') as flog:
@@ -737,6 +737,10 @@ class App():
 						continue
 				else:
 					print "File not aligned due to lack of features"
+					outFile = os.path.split(file)[-1]
+					outFile = "aligned_"+outFile
+					outFile = os.path.join(self.batchFolder,outFile)
+					open(outFile,'w').close()
 		# (CALIBRATION AND) EXTRACTION
 		if self.refFile != "":
 			if self.analyteIntensity.get() == 0 and self.analyteRelIntensity.get() == 0 and self.analyteBackground.get() == 0 and self.analyteRelIntBck.get() == 0 and self.alignmentQC.get() == 0 and self.qualityControl.get() == 0 and self.ppmQC.get() == 0 and self.SN.get() == 0 and self.analyteNoise.get() == 0:
@@ -753,10 +757,13 @@ class App():
 					chunks['%s' % i] = []
 			for i in ref:
 				chunks['%s' % i[4]].append(i)
+			if os.path.isfile(os.path.join(self.batchFolder,"pytables.h5")) == False:
+				filenames = glob.glob(os.path.join(str(self.batchFolder),EXTRACTION+"*"+EXTENSION))
 			for file in filenames:
 				results = []
 				self.inputFile = file
-				self.inputFileIdx = filenames2idx[file]
+				if os.path.isfile(os.path.join(self.batchFolder,"pytables.h5")):
+					self.inputFileIdx = filenames2idx[file]
 				array = []
 				readTimes = self.matchAnalyteTimes(ref)
 				self.readData(array, readTimes)
@@ -783,6 +790,7 @@ class App():
 							outFile = os.path.split(str(self.inputFile))[1]
 							outFile = outFile.split(".")[0]
 							outFile = "Uncalibrated_sumSpectrum_"+str(i)+"_"+str(outFile)+".xy"
+							outFile = os.path.join(str(self.batchFolder),outFile)
 							with open(outFile,'w') as fw:
 								fw.write("\n".join(str(j[0])+"\t"+str(j[1]) for j in spectrum))
 							continue
