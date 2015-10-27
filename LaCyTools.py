@@ -1101,7 +1101,7 @@ class App():
 						break
 					line = line.strip().split("\t")
 					if current:
-						if current.composition == line[0]:
+						if current.composition == line[0] and current.time == line[5]:
 							foo = Isotope()
 							foo.isotope = line[2]
 							foo.mass = float(line[3])
@@ -1165,7 +1165,7 @@ class App():
 		"""for i in total:
 			for j in i[1]:
 				print j.composition
-				if j.composition == "IgGI1H5N5F1S2":
+				if j.composition == "IgGI1H3N4F1":
 					for k in j.isotopes:
 						print k.isotope, k.charge, k.obsInt"""
 
@@ -1186,7 +1186,7 @@ class App():
 				if line[0] == "#":
 					continue
 				parts=line.rstrip('\n').split('\t')
-				compositions.append(parts[0])
+				compositions.append((parts[0],parts[1]))
 
 		#############################
 		# Start writing the results #
@@ -1216,6 +1216,7 @@ class App():
 				fw.write("MAX_CHARGE\t"+str(MAX_CHARGE)+"\n")
 				fw.write("MIN_TOTAL\t"+str(MIN_TOTAL)+"\n")
 				fw.write("BACKGROUND_WINDOW\t"+str(BACKGROUND_WINDOW)+"\n\n")
+
 			##############################
 			# Analyte Absolute Intensity #
 			##############################
@@ -1223,7 +1224,7 @@ class App():
 				# Header
 				fw.write("Abs Int")
 				for i in compositions:
-					fw.write("\t"+str(i))
+					fw.write("\t"+str(i[0]))
 				fw.write("\n")
 				# List of theoretical areas
 				fw.write("Fraction")
@@ -1232,7 +1233,7 @@ class App():
 					for j in total:
 						if len(j[1]) == len(compositions):
 							for k in j[1]:
-								if k.composition == i:
+								if k.composition == i[0] and float(k.time) == float(i[1]):
 									for l in k.isotopes:
 										sumInt += l.expInt
 							break
@@ -1246,7 +1247,7 @@ class App():
 					for j in total:
 						if len(j[1]) == len(compositions):
 							for k in j[1]:
-								if k.composition == i:
+								if k.composition == i[0] and float(k.time) == float(i[1]):
 									for l in k.isotopes:
 										if l.charge != charge:
 											charge = l.charge
@@ -1264,7 +1265,7 @@ class App():
 						sumInt = 0
 						for k in i[1]:
 							try:
-								if k.composition == j:
+								if k.composition == j[0] and float(k.time) == float(j[1]):
 									for l in k.isotopes:
 										sumInt += l.obsInt
 							except AttributeError:
@@ -1283,7 +1284,7 @@ class App():
 				# Header
 				fw.write("Abs Int (Bck Sub)")
 				for i in compositions:
-					fw.write("\t"+str(i))
+					fw.write("\t"+str(i[0]))
 				fw.write("\n")
 				# List of theoretical areas
 				fw.write("Fraction")
@@ -1292,7 +1293,7 @@ class App():
 					for j in total:
 						if len(j[1]) == len(compositions):
 							for k in j[1]:
-								if k.composition == i:
+								if k.composition == i[0] and float(k.time) == float(i[1]):
 									for l in k.isotopes:
 										sumInt += l.expInt
 							break
@@ -1306,7 +1307,7 @@ class App():
 					for j in total:
 						if len(j[1]) == len(compositions):
 							for k in j[1]:
-								if k.composition == i:
+								if k.composition == i[0] and float(k.time) == float(i[1]):
 									for l in k.isotopes:
 										if l.charge != charge:
 											charge = l.charge
@@ -1324,7 +1325,7 @@ class App():
 						sumInt = 0
 						for k in i[1]:
 							try:
-								if k.composition == j:
+								if k.composition == j[0] and float(k.time) == float(j[1]):
 									for l in k.isotopes:
 										sumInt += max(0, l.obsInt - l.background)
 							except AttributeError:
@@ -1343,7 +1344,7 @@ class App():
 				# Header
 				fw.write("Rel Int")
 				for i in compositions:
-					fw.write("\t"+str(i))
+					fw.write("\t"+str(i[0]))
 				fw.write("\n")
 				# List of theoretical areas
 				fw.write("Fraction")
@@ -1352,7 +1353,7 @@ class App():
 					for j in total:
 						if len(j[1]) == len(compositions):
 							for k in j[1]:
-								if k.composition == i:
+								if k.composition == i[0] and float(k.time) == float(i[1]):
 									for l in k.isotopes:
 										sumInt += l.expInt
 							break
@@ -1366,7 +1367,7 @@ class App():
 					for j in total:
 						if len(j[1]) == len(compositions):
 							for k in j[1]:
-								if k.composition == i:
+								if k.composition == i[0] and float(k.time) == float(i[1]):
 									for l in k.isotopes:
 										if l.charge != charge:
 											charge = l.charge
@@ -1384,7 +1385,7 @@ class App():
 					for j in compositions:
 						for k in i[1]:
 							try:
-								if k.composition == j:
+								if k.composition == j[0] and float(k.time) == float(j[1]):
 									for l in k.isotopes:
 										totalIntensity += l.obsInt
 							except AttributeError:
@@ -1393,7 +1394,7 @@ class App():
 						sumInt = 0
 						for k in i[1]:
 							try:
-								if k.composition == j:
+								if k.composition == j[0] and float(k.time) == float(j[1]):
 									for l in k.isotopes:
 										sumInt += l.obsInt
 							except AttributeError:
@@ -1412,7 +1413,7 @@ class App():
 				# Header
 				fw.write("Rel Int (Bck Sub)")
 				for i in compositions:
-					fw.write("\t"+str(i))
+					fw.write("\t"+str(i[0]))
 				fw.write("\n")
 				# List of theoretical areas
 				fw.write("Fraction")
@@ -1421,7 +1422,7 @@ class App():
 					for j in total:
 						if len(j[1]) == len(compositions):
 							for k in j[1]:
-								if k.composition == i:
+								if k.composition == i[0] and float(k.time) == float(i[1]):
 									for l in k.isotopes:
 										sumInt += l.expInt
 							break
@@ -1435,7 +1436,7 @@ class App():
 					for j in total:
 						if len(j[1]) == len(compositions):
 							for k in j[1]:
-								if k.composition == i:
+								if k.composition == i[0] and float(k.time) == float(i[1]):
 									for l in k.isotopes:
 										if l.charge != charge:
 											charge = l.charge
@@ -1453,7 +1454,7 @@ class App():
 					for j in compositions:
 						for k in i[1]:
 							try:
-								if k.composition == j:
+								if k.composition == j[0] and float(k.time) == float(j[1]):
 									for l in k.isotopes:
 										totalIntensity += max(0, l.obsInt - l.background)
 							except AttributeError:
@@ -1462,7 +1463,7 @@ class App():
 						sumInt = 0
 						for k in i[1]:
 							try:
-								if k.composition == j:
+								if k.composition == j[0] and float(k.time) == float(j[1]):
 									for l in k.isotopes:
 										sumInt += max(0, l.obsInt - l.background)
 							except AttributeError:
@@ -1481,7 +1482,7 @@ class App():
 				# Header
 				fw.write("BCK")
 				for i in compositions:
-					fw.write("\t"+str(i))
+					fw.write("\t"+str(i[0]))
 				fw.write("\n")
 				# List of theoretical areas
 				fw.write("Fraction")
@@ -1490,7 +1491,7 @@ class App():
 					for j in total:
 						if len(j[1]) == len(compositions):
 							for k in j[1]:
-								if k.composition == i:
+								if k.composition == i[0] and float(k.time) == float(i[1]):
 									for l in k.isotopes:
 										sumInt += l.expInt
 							break
@@ -1504,7 +1505,7 @@ class App():
 					for j in total:
 						if len(j[1]) == len(compositions):
 							for k in j[1]:
-								if k.composition == i:
+								if k.composition == i[0] and float(k.time) == float(i[1]):
 									for l in k.isotopes:
 										if l.charge != charge:
 											charge = l.charge
@@ -1522,7 +1523,7 @@ class App():
 						sumInt = 0
 						for k in i[1]:
 							try:
-								if k.composition == j:
+								if k.composition == j[0] and float(k.time) == float(j[1]):
 									for l in k.isotopes:
 										sumInt += l.background
 							except AttributeError:
@@ -1541,7 +1542,7 @@ class App():
 				# Header
 				fw.write("Noise")
 				for i in compositions:
-					fw.write("\t"+str(i))
+					fw.write("\t"+str(i[0]))
 				fw.write("\n")
 				# List of theoretical areas
 				fw.write("Fraction")
@@ -1550,7 +1551,7 @@ class App():
 					for j in total:
 						if len(j[1]) == len(compositions):
 							for k in j[1]:
-								if k.composition == i:
+								if k.composition == i[0] and float(k.time) == float(i[1]):
 									for l in k.isotopes:
 										sumInt += l.expInt
 							break
@@ -1564,7 +1565,7 @@ class App():
 					for j in total:
 						if len(j[1]) == len(compositions):
 							for k in j[1]:
-								if k.composition == i:
+								if k.composition == i[0] and float(k.time) == float(i[1]):
 									for l in k.isotopes:
 										if l.charge != charge:
 											charge = l.charge
@@ -1582,7 +1583,7 @@ class App():
 						sumInt = 0
 						for k in i[1]:
 							try:
-								if k.composition == j:
+								if k.composition == j[0] and float(k.time) == float(j[1]):
 									sumInt += k.isotopes[0].noise
 							except AttributeError:
 								pass
@@ -1633,6 +1634,7 @@ class App():
 			###############################
 			# Analyte Mass Error (in PPM) #
 			###############################
+			print self.ppmQC.get()
 			if self.ppmQC.get() == 1:
 				minCharge = sys.maxint
 				maxCharge = 0
@@ -1640,7 +1642,7 @@ class App():
 					for j in compositions:
 						for k in i[1]:
 							try:
-								if k.composition == j:
+								if k.composition == j[0] and float(k.time) == float(j[1]):
 									for l in k.isotopes:
 										if int(l.charge) < minCharge:
 											minCharge = int(l.charge)
@@ -1653,7 +1655,7 @@ class App():
 					# Header
 					fw.write("PPM Error ("+str(i)+"+)")
 					for j in compositions:
-						fw.write("\t"+str(j))
+						fw.write("\t"+str(j[0]))
 					fw.write("\n")
 					# List of theoretical areas
 					fw.write("Fraction")
@@ -1662,7 +1664,7 @@ class App():
 						for k in total:
 							if len(k[1]) == len(compositions):
 								for l in k[1]:
-									if l.composition == j:
+									if l.composition == j[0] and float(l.time) == float(j[1]):
 										for m in l.isotopes:
 											if int(m.charge) == i:
 												sumInt += m.expInt
@@ -1676,7 +1678,7 @@ class App():
 						for k in total:
 							if len(k[1]) == len(compositions):
 								for l in k[1]:
-									if l.composition == j:
+									if l.composition == j[0] and float(l.time) == float(j[1]):
 										for m in l.isotopes:
 											if int(m.charge) == i:
 												masses ="["+str(m.mass)+"]"
@@ -1692,7 +1694,7 @@ class App():
 							actualMass = 0.0
 							for l in j[1]:
 								try:
-									if l.composition == k:
+									if l.composition == k[0] and float(l.time) == float(k[1]):
 										for m in l.isotopes:
 											if m.expInt > relContribution and int(m.charge) == i:
 												relContribution = m.expInt
@@ -1718,7 +1720,7 @@ class App():
 					for j in compositions:
 						for k in i[1]:
 							try:
-								if k.composition == j:
+								if k.composition == j[0] and float(k.time) == float(j[1]):
 									for l in k.isotopes:
 										if int(l.charge) < minCharge:
 											minCharge = int(l.charge)
@@ -1731,7 +1733,7 @@ class App():
 					# Header
 					fw.write("QC ("+str(i)+"+)")
 					for j in compositions:
-						fw.write("\t"+str(j))
+						fw.write("\t"+str(j[0]))
 					fw.write("\n")
 					# List of theoretical areas (not being correct?)
 					fw.write("Fraction")
@@ -1740,7 +1742,7 @@ class App():
 						for k in total:
 							if len(k[1]) == len(compositions):
 								for l in k[1]:
-									if l.composition == j:
+									if l.composition == j[0] and float(l.time) == float(j[1]):
 										for m in l.isotopes:
 											if int(m.charge) == i:
 												sumInt += m.expInt
@@ -1754,7 +1756,7 @@ class App():
 						for k in total:
 							if len(k[1]) == len(compositions):
 								for l in k[1]:
-									if l.composition == j:
+									if l.composition == j[0] and float(l.time) == float(j[1]):
 										for m in l.isotopes:
 											if int(m.charge) == i:
 												masses ="["+str(m.mass)+"]"
@@ -1769,7 +1771,7 @@ class App():
 							qc = 0
 							for l in j[1]:
 								try:
-									if l.composition == k:
+									if l.composition == k[0] and float(l.time) == float(k[1]):
 										for m in l.isotopes:
 											if int(m.charge) == i:
 												sumInt += m.obsInt
@@ -1795,7 +1797,7 @@ class App():
 					for j in compositions:
 						for k in i[1]:
 							try:
-								if k.composition == j:
+								if k.composition == j[0] and float(k.time) == float(j[1]):
 									for l in k.isotopes:
 										if int(l.charge) < minCharge:
 											minCharge = int(l.charge)
@@ -1808,7 +1810,7 @@ class App():
 					# Header
 					fw.write("S/N ("+str(i)+"+)")
 					for j in compositions:
-						fw.write("\t"+str(j))
+						fw.write("\t"+str(j[0]))
 					fw.write("\n")
 					# List of theoretical areas (not being correct?)
 					fw.write("Fraction")
@@ -1817,7 +1819,7 @@ class App():
 						for k in total:
 							if len(k[1]) == len(compositions):
 								for l in k[1]:
-									if l.composition == j:
+									if l.composition == j[0] and float(l.time) == float(j[1]):
 										for m in l.isotopes:
 											if int(m.charge) == i:
 												sumInt += m.expInt
@@ -1831,7 +1833,7 @@ class App():
 						for k in total:
 							if len(k[1]) == len(compositions):
 								for l in k[1]:
-									if l.composition == j:
+									if l.composition == j[0] and float(l.time) == float(j[1]):
 										for m in l.isotopes:
 											if int(m.charge) == i:
 												masses ="["+str(m.mass)+"]"
@@ -1846,7 +1848,7 @@ class App():
 							SN = 0
 							for l in j[1]:
 								try:
-									if l.composition == k:
+									if l.composition == k[0] and float(l.time) == float(k[1]):
 										for m in l.isotopes:
 											if m.expInt > expInt and int(m.charge) == i:
 												SN = (m.obsMax - m.backgroundPoint) / m.noise
