@@ -1777,7 +1777,10 @@ class App():
 												sumInt += m.obsInt
 										for m in l.isotopes:
 											if int(m.charge) == i:
-												qc += ((float(m.obsInt) / float(sumInt)) - m.expInt)**2
+												try:
+													qc += ((float(m.obsInt) / float(sumInt)) - m.expInt)**2
+												except ZeroDivisionError:
+													pass
 								except AttributeError:
 									pass
 							if qc > 0:
@@ -1851,7 +1854,10 @@ class App():
 									if l.composition == k[0] and float(l.time) == float(k[1]):
 										for m in l.isotopes:
 											if m.expInt > expInt and int(m.charge) == i:
-												SN = (m.obsMax - m.backgroundPoint) / m.noise
+												try:
+													SN = (m.obsMax - m.backgroundPoint) / m.noise
+												except ZeroDivisionError:
+													pass
 												expInt = m.expInt
 								except AttributeError:
 									pass
