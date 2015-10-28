@@ -2123,7 +2123,7 @@ class App():
 		if peaks:
 			flag = 0
 			for i in readTimes:
-				if float(rt) > i[0] and float(rt) < i[1]:
+				if float(rt) >= i[0] and float(rt) <= i[1]:
 					self.mzXMLDecoder(rt, peaks, precision, compression, byteOrder, array)
 					flag = 1
 			if flag == 0:
