@@ -419,7 +419,7 @@ class App():
 		penalty = 0
 		if b > 2.:
 			penalty = abs(b-1.)*10000
-		if b < 1.:
+		if b < 0.:
 			penalty = abs(2.-b)*10000
 		return a*x**b + c + penalty
 
