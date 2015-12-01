@@ -455,10 +455,13 @@ class App():
 			observedCalibrated = []
 			for index, j in enumerate(observed):
 				observedCalibrated.append(self.fitFunc(j,*z[0]))
-			plt.scatter(expected,observedCalibrated,c='r',label='calibrated',alpha=0.5)
+			plt.scatter(expected,observedCalibrated,c='r',label='calibrated',marker='s',alpha=0.5)
 			numbers = ["%.2f" % number for number in z[0]]
-			plt.plot(newX,yNew,label='Fit, Function: '+str(numbers[0])+"x"+"$^{"+str(numbers[1])+"}$+"+str(numbers[2]),c='b')
-			plt.plot(newX,linY,label='Target',c='r')
+			if float(numbers[2]) > 0.0:
+				plt.plot(newX,yNew,label='Fit, Function: '+str(numbers[0])+"x"+"$^{"+str(numbers[1])+"}$+"+str(numbers[2]),c='b')
+			else:
+				plt.plot(newX,yNew,label='Fit, Function: '+str(numbers[0])+"x"+"$^{"+str(numbers[1])+"}$"+str(numbers[2]),c='b')
+			plt.plot(newX,linY,label='Target',c='r',linestyle='--')
 			plt.legend(loc='best')
 			plt.xlim(minX,maxX)
 			plt.ylim(minY,maxY)
