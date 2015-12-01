@@ -451,11 +451,11 @@ class App():
 			maxY = self.fitFunc(maxX,*z[0])
 			fig =  plt.figure(figsize=(8,6))
 			ax = fig.add_subplot(111)
-			plt.scatter(expected,observed,c='b',label='raw',alpha=0.5)
+			plt.scatter(expected,observed,c='b',label='Raw',alpha=0.5)
 			observedCalibrated = []
 			for index, j in enumerate(observed):
 				observedCalibrated.append(self.fitFunc(j,*z[0]))
-			plt.scatter(expected,observedCalibrated,c='r',label='calibrated',marker='s',alpha=0.5)
+			plt.scatter(expected,observedCalibrated,c='r',label='Calibrated',marker='s',alpha=0.5)
 			numbers = ["%.2f" % number for number in z[0]]
 			if float(numbers[2]) > 0.0:
 				plt.plot(newX,yNew,label='Fit, Function: '+str(numbers[0])+"x"+"$^{"+str(numbers[1])+"}$+"+str(numbers[2]),c='b')
