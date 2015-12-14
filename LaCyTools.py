@@ -382,7 +382,7 @@ class App():
 
 		# FRAME
 		frame = Frame(master)
-		master.title("LacyTools")
+		master.title("LaCyTools")
 
 		# MENU
 		menu = Menu(root)
