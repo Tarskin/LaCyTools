@@ -353,11 +353,11 @@ class App():
 		self.dataWindow = 0
 		self.outputWindow = 0
 		self.analyteIntensity = IntVar()
+		self.analyteIntBck = IntVar()
 		self.analyteRelIntensity = IntVar()
 		self.analyteBackground = IntVar()
+		self.analyteRelIntBck = IntVar()
 		self.analyteNoise = IntVar()
-		self.analytePerCharge = IntVar()
-		self.analyteBckSub = IntVar()
 		self.alignmentQC = IntVar()
 		self.ppmQC = IntVar()
 		self.qualityControl = IntVar()
@@ -444,7 +444,7 @@ class App():
 			#############
 			minX = min(expected)-0.1*min(expected)
 			maxX = max(expected)+0.1*max(expected)
-			newX = numpy.linspace(minX,maxX,2500*(maxX-minX))
+			newX = numpy.linspace(minX,maxX,2500)
 			linY = newX
 			yNew = self.fitFunc(newX,*z[0])
 			minY = self.fitFunc(minX,*z[0])
@@ -463,8 +463,6 @@ class App():
 				plt.plot(newX,yNew,label='Fit, Function: '+str(numbers[0])+"x"+"$^{"+str(numbers[1])+"}$"+str(numbers[2]),c='b')
 			plt.plot(newX,linY,label='Target',c='r',linestyle='--')
 			plt.legend(loc='best')
-			plt.xlabel("Expected rt (s.)")
-			plt.ylabel("Observed rt (s.)")
 			plt.xlim(minX,maxX)
 			plt.ylim(minY,maxY)
 			fig.savefig(name,dpi=800)
@@ -705,26 +703,22 @@ class App():
 				if len(timePairs) >= ALIGNMENT_MIN_PEAK:
 					warnUser = False
 					alignFunction = self.calcQuadratic(timePairs)
-					#except TypeError:
-					if alignFunction == None:
+					try:
+						# Create alignment output file
+						alignmentOutput = self.inputFile.split(".")[0]
+						alignmentOutput = alignmentOutput + ".alignment"
+						with open(alignmentOutput,'w') as falign:
+							lsq = 0
+							falign.write("Peak\tExpected RT\tOriginal RT\tAligned RT\n")
+							for index,timePair in enumerate(timePairs):
+								falign.write(str(features[index][0])+"\t"+str(timePair[0])+"\t"+str(timePair[1])+"\t"+str(self.fitFunc(float(timePair[1]),*alignFunction[0]))+"\n")
+								lsq += float(features[index][0]) - self.fitFunc(float(timePair[1]),*alignFunction[0])
+						self.transform_mzXML(file,alignFunction[0])
+					except TypeError:
 						if self.log == True:
 							with open('LaCyTools.log', 'a') as flog:
 								flog.write(str(datetime.now())+"\tFile: "+str(file)+" could not be aligned. Curve_fit exceeded maximum number of iterations\n")
-						outFile = os.path.split(file)[-1]
-						outFile = "unaligned_"+outFile
-						outFile = os.path.join(self.batchFolder,outFile)
-						open(outFile,'w').close()
 						continue
-					# Create alignment output file
-					alignmentOutput = self.inputFile.split(".")[0]
-					alignmentOutput = alignmentOutput + ".alignment"
-					with open(alignmentOutput,'w') as falign:
-						lsq = 0
-						falign.write("Peak\tExpected RT\tOriginal RT\tAligned RT\n")
-						for index,timePair in enumerate(timePairs):
-							falign.write(str(features[index][0])+"\t"+str(timePair[0])+"\t"+str(timePair[1])+"\t"+str(self.fitFunc(float(timePair[1]),*alignFunction[0]))+"\n")
-							lsq += float(features[index][0]) - self.fitFunc(float(timePair[1]),*alignFunction[0])
-					self.transform_mzXML(file,alignFunction[0])
 				else:
 					print "File not aligned due to lack of features"
 					outFile = os.path.split(file)[-1]
@@ -733,7 +727,7 @@ class App():
 					open(outFile,'w').close()
 		# (CALIBRATION AND) EXTRACTION
 		if self.refFile != "":
-			if self.analyteIntensity.get() == 0 and self.analyteRelIntensity.get() == 0 and self.analyteBackground.get() == 0 and self.analyteNoise.get() == 0 and self.alignmentQC.get() == 0 and self.qualityControl.get() == 0 and self.ppmQC.get() == 0 and self.SN.get() == 0:
+			if self.analyteIntensity.get() == 0 and self.analyteRelIntensity.get() == 0 and self.analyteBackground.get() == 0 and self.analyteRelIntBck.get() == 0 and self.alignmentQC.get() == 0 and self.qualityControl.get() == 0 and self.ppmQC.get() == 0 and self.SN.get() == 0 and self.analyteNoise.get() == 0:
 				tkMessageBox.showinfo("Output Error","No outputs selected")
 			self.initCompositionMasses(self.refFile)
 			ref = []
@@ -927,7 +921,7 @@ class App():
 			for j in spectrum[lowMz:highMz]:
 				x_points.append(j[0])
 				y_points.append(j[1])
-			newX = numpy.linspace(x_points[0],x_points[-1],2500*(x_points[-1]-x_points[0]))
+			newX = numpy.linspace(x_points[0],x_points[-1],1000)
 			f = interp1d(x_points,y_points, kind='cubic')
 			ySPLINE = f(newX)
 			# Plot Code (for testing purposes)
@@ -1229,845 +1223,379 @@ class App():
 			##############################
 			# Analyte Absolute Intensity #
 			##############################
-			if self.analyteIntensity.get() == 1 and self.analyteBckSub.get() == 0:
-				##########################
-				# Combined charge states #
-				##########################
-				if self.analytePerCharge.get() == 0:
-					# Header
-					fw.write("Abs Int")
-					for i in compositions:
-						fw.write("\t"+str(i[0]))
-					fw.write("\n")
-					# List of theoretical areas
-					fw.write("Fraction")
-					for i in compositions:
+			if self.analyteIntensity.get() == 1:
+				# Header
+				fw.write("Abs Int")
+				for i in compositions:
+					fw.write("\t"+str(i[0]))
+				fw.write("\n")
+				# List of theoretical areas
+				fw.write("Fraction")
+				for i in compositions:
+					sumInt = 0
+					for j in total:
+						if len(j[1]) == len(compositions):
+							for k in j[1]:
+								if k.composition == i[0] and float(k.time) == float(i[1]):
+									for l in k.isotopes:
+										sumInt += l.expInt
+							break
+					fw.write("\t"+str(sumInt))
+				fw.write("\n")
+				# List of monoisotopic masses
+				fw.write("Monoisotopic Mass")
+				for i in compositions:
+					masses = ""
+					charge = 0
+					for j in total:
+						if len(j[1]) == len(compositions):
+							for k in j[1]:
+								if k.composition == i[0] and float(k.time) == float(i[1]):
+									for l in k.isotopes:
+										if l.charge != charge:
+											charge = l.charge
+											if masses == "":
+												masses ="["+str(l.mass)+"]"
+											else:
+												masses += " ["+str(l.mass)+"]"
+							break
+					fw.write("\t"+masses)
+				fw.write("\n")
+				# Actual data
+				for i in total:
+					fw.write(str(i[0]))
+					for j in compositions:
 						sumInt = 0
-						for j in total:
-							if len(j[1]) == len(compositions):
-								for k in j[1]:
-									if k.composition == i[0] and float(k.time) == float(i[1]):
-										for l in k.isotopes:
-											sumInt += l.expInt
-								break
-						fw.write("\t"+str(sumInt))
-					fw.write("\n")
-					# List of monoisotopic masses
-					fw.write("Monoisotopic Mass")
-					for i in compositions:
-						masses = ""
-						charge = 0
-						for j in total:
-							if len(j[1]) == len(compositions):
-								for k in j[1]:
-									if k.composition == i[0] and float(k.time) == float(i[1]):
-										for l in k.isotopes:
-											if l.charge != charge:
-												charge = l.charge
-												if masses == "":
-													masses ="["+str(l.mass)+"]"
-												else:
-													masses += " ["+str(l.mass)+"]"
-								break
-						fw.write("\t"+masses)
-					fw.write("\n")
-					# Actual data
-					for i in total:
-						fw.write(str(i[0]))
-						for j in compositions:
-							sumInt = 0
-							for k in i[1]:
-								try:
-									if k.composition == j[0] and float(k.time) == float(j[1]):
-										for l in k.isotopes:
-											sumInt += l.obsInt
-								except AttributeError:
-									pass
-							if sumInt > 0:
-								fw.write("\t"+str(sumInt))
-							else:
-								fw.write("\t")
-						fw.write("\n")
-					fw.write("\n")
-				
-				####################
-				# Per charge state #
-				####################
-				if self.analytePerCharge.get() == 1:
-					minCharge = sys.maxint
-					maxCharge = 0
-					for i in total:
-						for j in compositions:
-							for k in i[1]:
-								try:
-									if k.composition == j[0] and float(k.time) == float(j[1]):
-										for l in k.isotopes:
-											if int(l.charge) < minCharge:
-												minCharge = int(l.charge)
-											elif int(l.charge) > maxCharge:
-												maxCharge = int(l.charge)
-								except AttributeError:
-									pass
-					for i in xrange(minCharge,maxCharge+1):
-						# This is a time intensive function
-						# Header
-						fw.write("Abs Int ("+str(i)+"+)")
-						for j in compositions:
-							fw.write("\t"+str(j[0]))
-						fw.write("\n")
-						# List of theoretical areas (not being correct?)
-						fw.write("Fraction")
-						for j in compositions:
-							sumInt = 0
-							for k in total:
-								if len(k[1]) == len(compositions):
-									for l in k[1]:
-										if l.composition == j[0] and float(l.time) == float(j[1]):
-											for m in l.isotopes:
-												if int(m.charge) == i:
-													sumInt += m.expInt
-									break
+						for k in i[1]:
+							try:
+								if k.composition == j[0] and float(k.time) == float(j[1]):
+									for l in k.isotopes:
+										sumInt += l.obsInt
+							except AttributeError:
+								pass
+						if sumInt > 0:
 							fw.write("\t"+str(sumInt))
-						fw.write("\n")
-						# List of monoisotopic masses
-						fw.write("Monoisotopic Mass")
-						for j in compositions:
-							masses = ""
-							for k in total:
-								if len(k[1]) == len(compositions):
-									for l in k[1]:
-										if l.composition == j[0] and float(l.time) == float(j[1]):
-											for m in l.isotopes:
-												if int(m.charge) == i:
-													masses ="["+str(m.mass)+"]"
-													break
-							fw.write("\t"+masses)
-						fw.write("\n")
-						# Actual data
-						for j in total:
-							fw.write(str(j[0]))
-							for k in compositions:
-								sumInt = 0
-								for l in j[1]:
-									try:
-										if l.composition == k[0] and float(l.time) == float(k[1]):
-											for m in l.isotopes:
-												if int(m.charge) == i:
-													sumInt += m.obsInt
-									except AttributeError:
-										pass
-									fw.write("\t"+str(sumInt))
-							fw.write("\n")
-						fw.write("\n")
+						else:
+							fw.write("\t")
+					fw.write("\n")
+				fw.write("\n")
 
 			######################################################
 			# Analyte Absolute Intensity (Background subtracted) #
 			######################################################
-			if self.analyteIntensity.get() == 1 and self.analyteBckSub.get() == 1:
-				#########################
-				# Combined charge state #
-				#########################
-				if self.analytePerCharge.get() == 0:
-					# Header
-					fw.write("Abs Int (Bck Sub)")
-					for i in compositions:
-						fw.write("\t"+str(i[0]))
-					fw.write("\n")
-					# List of theoretical areas
-					fw.write("Fraction")
-					for i in compositions:
+			if self.analyteIntBck.get() == 1:
+				# Header
+				fw.write("Abs Int (Bck Sub)")
+				for i in compositions:
+					fw.write("\t"+str(i[0]))
+				fw.write("\n")
+				# List of theoretical areas
+				fw.write("Fraction")
+				for i in compositions:
+					sumInt = 0
+					for j in total:
+						if len(j[1]) == len(compositions):
+							for k in j[1]:
+								if k.composition == i[0] and float(k.time) == float(i[1]):
+									for l in k.isotopes:
+										sumInt += l.expInt
+							break
+					fw.write("\t"+str(sumInt))
+				fw.write("\n")
+				# List of monoisotopic masses
+				fw.write("Monoisotopic Mass")
+				for i in compositions:
+					masses = ""
+					charge = 0
+					for j in total:
+						if len(j[1]) == len(compositions):
+							for k in j[1]:
+								if k.composition == i[0] and float(k.time) == float(i[1]):
+									for l in k.isotopes:
+										if l.charge != charge:
+											charge = l.charge
+											if masses == "":
+												masses ="["+str(l.mass)+"]"
+											else:
+												masses += " ["+str(l.mass)+"]"
+							break
+					fw.write("\t"+masses)
+				fw.write("\n")
+				# Actual data
+				for i in total:
+					fw.write(str(i[0]))
+					for j in compositions:
 						sumInt = 0
-						for j in total:
-							if len(j[1]) == len(compositions):
-								for k in j[1]:
-									if k.composition == i[0] and float(k.time) == float(i[1]):
-										for l in k.isotopes:
-											sumInt += l.expInt
-								break
-						fw.write("\t"+str(sumInt))
-					fw.write("\n")
-					# List of monoisotopic masses
-					fw.write("Monoisotopic Mass")
-					for i in compositions:
-						masses = ""
-						charge = 0
-						for j in total:
-							if len(j[1]) == len(compositions):
-								for k in j[1]:
-									if k.composition == i[0] and float(k.time) == float(i[1]):
-										for l in k.isotopes:
-											if l.charge != charge:
-												charge = l.charge
-												if masses == "":
-													masses ="["+str(l.mass)+"]"
-												else:
-													masses += " ["+str(l.mass)+"]"
-								break
-						fw.write("\t"+masses)
-					fw.write("\n")
-					# Actual data
-					for i in total:
-						fw.write(str(i[0]))
-						for j in compositions:
-							sumInt = 0
-							for k in i[1]:
-								try:
-									if k.composition == j[0] and float(k.time) == float(j[1]):
-										for l in k.isotopes:
-											sumInt += max(0, l.obsInt - l.background)
-								except AttributeError:
-									pass
-							if sumInt > 0:
-								fw.write("\t"+str(sumInt))
-							else:
-								fw.write("\t")
-						fw.write("\n")
-					fw.write("\n")
-
-				####################
-				# Per charge state #
-				####################
-				if self.analytePerCharge.get() == 1:
-					minCharge = sys.maxint
-					maxCharge = 0
-					for i in total:
-						for j in compositions:
-							for k in i[1]:
-								try:
-									if k.composition == j[0] and float(k.time) == float(j[1]):
-										for l in k.isotopes:
-											if int(l.charge) < minCharge:
-												minCharge = int(l.charge)
-											elif int(l.charge) > maxCharge:
-												maxCharge = int(l.charge)
-								except AttributeError:
-									pass
-					for i in xrange(minCharge,maxCharge+1):
-						# This is a time intensive function
-						# Header
-						fw.write("Abs Int (Bck Sub, "+str(i)+"+)")
-						for j in compositions:
-							fw.write("\t"+str(j[0]))
-						fw.write("\n")
-						# List of theoretical areas (not being correct?)
-						fw.write("Fraction")
-						for j in compositions:
-							sumInt = 0
-							for k in total:
-								if len(k[1]) == len(compositions):
-									for l in k[1]:
-										if l.composition == j[0] and float(l.time) == float(j[1]):
-											for m in l.isotopes:
-												if int(m.charge) == i:
-													sumInt += m.expInt
-									break
+						for k in i[1]:
+							try:
+								if k.composition == j[0] and float(k.time) == float(j[1]):
+									for l in k.isotopes:
+										sumInt += max(0, l.obsInt - l.background)
+							except AttributeError:
+								pass
+						if sumInt > 0:
 							fw.write("\t"+str(sumInt))
-						fw.write("\n")
-						# List of monoisotopic masses
-						fw.write("Monoisotopic Mass")
-						for j in compositions:
-							masses = ""
-							for k in total:
-								if len(k[1]) == len(compositions):
-									for l in k[1]:
-										if l.composition == j[0] and float(l.time) == float(j[1]):
-											for m in l.isotopes:
-												if int(m.charge) == i:
-													masses ="["+str(m.mass)+"]"
-													break
-							fw.write("\t"+masses)
-						fw.write("\n")
-						# Actual data
-						for j in total:
-							fw.write(str(j[0]))
-							for k in compositions:
-								sumInt = 0
-								for l in j[1]:
-									try:
-										if l.composition == k[0] and float(l.time) == float(k[1]):
-											for m in l.isotopes:
-												if int(m.charge) == i:
-													sumInt += max(0, m.obsInt - m.background)
-									except AttributeError:
-										pass
-									fw.write("\t"+str(sumInt))
-							fw.write("\n")
-						fw.write("\n")
+						else:
+							fw.write("\t")
+					fw.write("\n")
+				fw.write("\n")
 
 			##############################
 			# Analyte Relative Intensity #
 			##############################
-			if self.analyteRelIntensity.get() == 1 and self.analyteBckSub.get() == 0:
-				#########################
-				# Combined charge state #
-				#########################
-				if self.analytePerCharge.get() == 0:
-					# Header
-					fw.write("Rel Int")
-					for i in compositions:
-						fw.write("\t"+str(i[0]))
-					fw.write("\n")
-					# List of theoretical areas
-					fw.write("Fraction")
-					for i in compositions:
+			if self.analyteRelIntensity.get() == 1:
+				# Header
+				fw.write("Rel Int")
+				for i in compositions:
+					fw.write("\t"+str(i[0]))
+				fw.write("\n")
+				# List of theoretical areas
+				fw.write("Fraction")
+				for i in compositions:
+					sumInt = 0
+					for j in total:
+						if len(j[1]) == len(compositions):
+							for k in j[1]:
+								if k.composition == i[0] and float(k.time) == float(i[1]):
+									for l in k.isotopes:
+										sumInt += l.expInt
+							break
+					fw.write("\t"+str(sumInt))
+				fw.write("\n")
+				# List of monoisotopic masses
+				fw.write("Monoisotopic Mass")
+				for i in compositions:
+					masses = ""
+					charge = 0
+					for j in total:
+						if len(j[1]) == len(compositions):
+							for k in j[1]:
+								if k.composition == i[0] and float(k.time) == float(i[1]):
+									for l in k.isotopes:
+										if l.charge != charge:
+											charge = l.charge
+											if masses == "":
+												masses ="["+str(l.mass)+"]"
+											else:
+												masses += " ["+str(l.mass)+"]"
+							break
+					fw.write("\t"+masses)
+				fw.write("\n")
+				# Actual data
+				for i in total:
+					fw.write(str(i[0]))
+					totalIntensity = 1
+					for j in compositions:
+						for k in i[1]:
+							try:
+								if k.composition == j[0] and float(k.time) == float(j[1]):
+									for l in k.isotopes:
+										totalIntensity += l.obsInt
+							except AttributeError:
+								pass
+					for j in compositions:
 						sumInt = 0
-						for j in total:
-							if len(j[1]) == len(compositions):
-								for k in j[1]:
-									if k.composition == i[0] and float(k.time) == float(i[1]):
-										for l in k.isotopes:
-											sumInt += l.expInt
-								break
-						fw.write("\t"+str(sumInt))
+						for k in i[1]:
+							try:
+								if k.composition == j[0] and float(k.time) == float(j[1]):
+									for l in k.isotopes:
+										sumInt += l.obsInt
+							except AttributeError:
+								pass
+						if sumInt > 0:
+							fw.write("\t"+str(float(sumInt)/float(totalIntensity)))
+						else:
+							fw.write("\t")
 					fw.write("\n")
-					# List of monoisotopic masses
-					fw.write("Monoisotopic Mass")
-					for i in compositions:
-						masses = ""
-						charge = 0
-						for j in total:
-							if len(j[1]) == len(compositions):
-								for k in j[1]:
-									if k.composition == i[0] and float(k.time) == float(i[1]):
-										for l in k.isotopes:
-											if l.charge != charge:
-												charge = l.charge
-												if masses == "":
-													masses ="["+str(l.mass)+"]"
-												else:
-													masses += " ["+str(l.mass)+"]"
-								break
-						fw.write("\t"+masses)
-					fw.write("\n")
-					# Actual data
-					for i in total:
-						fw.write(str(i[0]))
-						totalIntensity = 1
-						for j in compositions:
-							for k in i[1]:
-								try:
-									if k.composition == j[0] and float(k.time) == float(j[1]):
-										for l in k.isotopes:
-											totalIntensity += l.obsInt
-								except AttributeError:
-									pass
-						for j in compositions:
-							sumInt = 0
-							for k in i[1]:
-								try:
-									if k.composition == j[0] and float(k.time) == float(j[1]):
-										for l in k.isotopes:
-											sumInt += l.obsInt
-								except AttributeError:
-									pass
-							if sumInt > 0:
-								fw.write("\t"+str(float(sumInt)/float(totalIntensity)))
-							else:
-								fw.write("\t")
-						fw.write("\n")
-					fw.write("\n")
-
-				####################
-				# Per charge state #
-				####################
-				if self.analytePerCharge.get() == 1:
-					minCharge = sys.maxint
-					maxCharge = 0
-					for i in total:
-						for j in compositions:
-							for k in i[1]:
-								try:
-									if k.composition == j[0] and float(k.time) == float(j[1]):
-										for l in k.isotopes:
-											if int(l.charge) < minCharge:
-												minCharge = int(l.charge)
-											elif int(l.charge) > maxCharge:
-												maxCharge = int(l.charge)
-								except AttributeError:
-									pass
-					for i in xrange(minCharge,maxCharge+1):
-						# This is a time intensive function
-						# Header
-						fw.write("Rel Int ("+str(i)+"+)")
-						for j in compositions:
-							fw.write("\t"+str(j[0]))
-						fw.write("\n")
-						# List of theoretical areas (not being correct?)
-						fw.write("Fraction")
-						for j in compositions:
-							sumInt = 0
-							for k in total:
-								if len(k[1]) == len(compositions):
-									for l in k[1]:
-										if l.composition == j[0] and float(l.time) == float(j[1]):
-											for m in l.isotopes:
-												if int(m.charge) == i:
-													sumInt += m.expInt
-									break
-							fw.write("\t"+str(sumInt))
-						fw.write("\n")
-						# List of monoisotopic masses
-						fw.write("Monoisotopic Mass")
-						for j in compositions:
-							masses = ""
-							for k in total:
-								if len(k[1]) == len(compositions):
-									for l in k[1]:
-										if l.composition == j[0] and float(l.time) == float(j[1]):
-											for m in l.isotopes:
-												if int(m.charge) == i:
-													masses ="["+str(m.mass)+"]"
-													break
-							fw.write("\t"+masses)
-						fw.write("\n")
-						# Actual data
-						for j in total:
-							fw.write(str(j[0]))
-							totalIntensity = 1
-							for k in compositions:
-								for l in j[1]:
-									try:
-										if l.composition == k[0] and float(l.time) == float(k[1]):
-											for m in l.isotopes:
-												if int(m.charge) == i:
-													totalIntensity += m.obsInt
-									except AttributeError:
-										pass
-							for k in compositions:
-								sumInt = 0
-								for l in j[1]:
-									try:
-										if l.composition == k[0] and float(l.time) == float(k[1]):
-											for m in l.isotopes:
-												if int(m.charge) == i:
-													sumInt += m.obsInt
-									except AttributeError:
-										pass
-								if sumInt > 0:
-									fw.write("\t"+str(float(sumInt)/float(totalIntensity)))
-								else:
-									fw.write("\t")
-							fw.write("\n")
-						fw.write("\n")
+				fw.write("\n")
 
 			##############################################
 			# Relative Intensity (Background Subtracted) #
 			##############################################
-			if self.analyteRelIntensity.get() == 1 and self.analyteBckSub.get() == 1:
-				#########################
-				# Combined charge state #
-				#########################
-				if self.analytePerCharge.get() == 0:
-					# Header
-					fw.write("Rel Int (Bck Sub)")
-					for i in compositions:
-						fw.write("\t"+str(i[0]))
-					fw.write("\n")
-					# List of theoretical areas
-					fw.write("Fraction")
-					for i in compositions:
+			if self.analyteRelIntBck.get() == 1:
+				# Header
+				fw.write("Rel Int (Bck Sub)")
+				for i in compositions:
+					fw.write("\t"+str(i[0]))
+				fw.write("\n")
+				# List of theoretical areas
+				fw.write("Fraction")
+				for i in compositions:
+					sumInt = 0
+					for j in total:
+						if len(j[1]) == len(compositions):
+							for k in j[1]:
+								if k.composition == i[0] and float(k.time) == float(i[1]):
+									for l in k.isotopes:
+										sumInt += l.expInt
+							break
+					fw.write("\t"+str(sumInt))
+				fw.write("\n")
+				# List of monoisotopic masses
+				fw.write("Monoisotopic Mass")
+				for i in compositions:
+					masses = ""
+					charge = 0
+					for j in total:
+						if len(j[1]) == len(compositions):
+							for k in j[1]:
+								if k.composition == i[0] and float(k.time) == float(i[1]):
+									for l in k.isotopes:
+										if l.charge != charge:
+											charge = l.charge
+											if masses == "":
+												masses ="["+str(l.mass)+"]"
+											else:
+												masses += " ["+str(l.mass)+"]"
+							break
+					fw.write("\t"+masses)
+				fw.write("\n")
+				# Actual data
+				for i in total:
+					fw.write(str(i[0]))
+					totalIntensity = 1
+					for j in compositions:
+						for k in i[1]:
+							try:
+								if k.composition == j[0] and float(k.time) == float(j[1]):
+									for l in k.isotopes:
+										totalIntensity += max(0, l.obsInt - l.background)
+							except AttributeError:
+								pass
+					for j in compositions:
 						sumInt = 0
-						for j in total:
-							if len(j[1]) == len(compositions):
-								for k in j[1]:
-									if k.composition == i[0] and float(k.time) == float(i[1]):
-										for l in k.isotopes:
-											sumInt += l.expInt
-								break
-						fw.write("\t"+str(sumInt))
+						for k in i[1]:
+							try:
+								if k.composition == j[0] and float(k.time) == float(j[1]):
+									for l in k.isotopes:
+										sumInt += max(0, l.obsInt - l.background)
+							except AttributeError:
+								pass
+						if sumInt > 0:
+							fw.write("\t"+str(float(sumInt)/float(totalIntensity)))
+						else:
+							fw.write("\t")
 					fw.write("\n")
-					# List of monoisotopic masses
-					fw.write("Monoisotopic Mass")
-					for i in compositions:
-						masses = ""
-						charge = 0
-						for j in total:
-							if len(j[1]) == len(compositions):
-								for k in j[1]:
-									if k.composition == i[0] and float(k.time) == float(i[1]):
-										for l in k.isotopes:
-											if l.charge != charge:
-												charge = l.charge
-												if masses == "":
-													masses ="["+str(l.mass)+"]"
-												else:
-													masses += " ["+str(l.mass)+"]"
-								break
-						fw.write("\t"+masses)
-					fw.write("\n")
-					# Actual data
-					for i in total:
-						fw.write(str(i[0]))
-						totalIntensity = 1
-						for j in compositions:
-							for k in i[1]:
-								try:
-									if k.composition == j[0] and float(k.time) == float(j[1]):
-										for l in k.isotopes:
-											totalIntensity += max(0, l.obsInt - l.background)
-								except AttributeError:
-									pass
-						for j in compositions:
-							sumInt = 0
-							for k in i[1]:
-								try:
-									if k.composition == j[0] and float(k.time) == float(j[1]):
-										for l in k.isotopes:
-											sumInt += max(0, l.obsInt - l.background)
-								except AttributeError:
-									pass
-							if sumInt > 0:
-								fw.write("\t"+str(float(sumInt)/float(totalIntensity)))
-							else:
-								fw.write("\t")
-						fw.write("\n")
-					fw.write("\n")
-
-				####################
-				# Per charge state #
-				####################
-				if self.analytePerCharge.get() == 1:
-					minCharge = sys.maxint
-					maxCharge = 0
-					for i in total:
-						for j in compositions:
-							for k in i[1]:
-								try:
-									if k.composition == j[0] and float(k.time) == float(j[1]):
-										for l in k.isotopes:
-											if int(l.charge) < minCharge:
-												minCharge = int(l.charge)
-											elif int(l.charge) > maxCharge:
-												maxCharge = int(l.charge)
-								except AttributeError:
-									pass
-					for i in xrange(minCharge,maxCharge+1):
-						# This is a time intensive function
-						# Header
-						fw.write("Rel Int (Bck Sub, "+str(i)+"+)")
-						for j in compositions:
-							fw.write("\t"+str(j[0]))
-						fw.write("\n")
-						# List of theoretical areas (not being correct?)
-						fw.write("Fraction")
-						for j in compositions:
-							sumInt = 0
-							for k in total:
-								if len(k[1]) == len(compositions):
-									for l in k[1]:
-										if l.composition == j[0] and float(l.time) == float(j[1]):
-											for m in l.isotopes:
-												if int(m.charge) == i:
-													sumInt += m.expInt
-									break
-							fw.write("\t"+str(sumInt))
-						fw.write("\n")
-						# List of monoisotopic masses
-						fw.write("Monoisotopic Mass")
-						for j in compositions:
-							masses = ""
-							for k in total:
-								if len(k[1]) == len(compositions):
-									for l in k[1]:
-										if l.composition == j[0] and float(l.time) == float(j[1]):
-											for m in l.isotopes:
-												if int(m.charge) == i:
-													masses ="["+str(m.mass)+"]"
-													break
-							fw.write("\t"+masses)
-						fw.write("\n")
-						# Actual data
-						for j in total:
-							fw.write(str(j[0]))
-							totalIntensity = 1
-							for k in compositions:
-								for l in j[1]:
-									try:
-										if l.composition == k[0] and float(l.time) == float(k[1]):
-											for m in l.isotopes:
-												if int(m.charge) == i:
-													totalIntensity += max(0, m.obsInt - m.background)
-									except AttributeError:
-										pass
-							for k in compositions:
-								sumInt = 0
-								for l in j[1]:
-									try:
-										if l.composition == k[0] and float(l.time) == float(k[1]):
-											for m in l.isotopes:
-												if int(m.charge) == i:
-													sumInt += max(0, m.obsInt - m.background)
-									except AttributeError:
-										pass
-								if sumInt > 0:
-									fw.write("\t"+str(float(sumInt)/float(totalIntensity)))
-								else:
-									fw.write("\t")
-							fw.write("\n")
-						fw.write("\n")
+				fw.write("\n")
 
 			################################
 			# Analyte Background Intensity #
 			################################
 			if self.analyteBackground.get() == 1:
-				#########################
-				# Combined charge state #
-				#########################
-				if self.analytePerCharge.get() == 0:
-					# Header
-					fw.write("BCK")
-					for i in compositions:
-						fw.write("\t"+str(i[0]))
-					fw.write("\n")
-					# List of theoretical areas
-					fw.write("Fraction")
-					for i in compositions:
+				# Header
+				fw.write("BCK")
+				for i in compositions:
+					fw.write("\t"+str(i[0]))
+				fw.write("\n")
+				# List of theoretical areas
+				fw.write("Fraction")
+				for i in compositions:
+					sumInt = 0
+					for j in total:
+						if len(j[1]) == len(compositions):
+							for k in j[1]:
+								if k.composition == i[0] and float(k.time) == float(i[1]):
+									for l in k.isotopes:
+										sumInt += l.expInt
+							break
+					fw.write("\t"+str(sumInt))
+				fw.write("\n")
+				# List of monoisotopic masses
+				fw.write("Monoisotopic Mass")
+				for i in compositions:
+					masses = ""
+					charge = 0
+					for j in total:
+						if len(j[1]) == len(compositions):
+							for k in j[1]:
+								if k.composition == i[0] and float(k.time) == float(i[1]):
+									for l in k.isotopes:
+										if l.charge != charge:
+											charge = l.charge
+											if masses == "":
+												masses ="["+str(l.mass)+"]"
+											else:
+												masses += " ["+str(l.mass)+"]"
+							break
+					fw.write("\t"+masses)
+				fw.write("\n")
+				# Actual data
+				for i in total:
+					fw.write(str(i[0]))
+					for j in compositions:
 						sumInt = 0
-						for j in total:
-							if len(j[1]) == len(compositions):
-								for k in j[1]:
-									if k.composition == i[0] and float(k.time) == float(i[1]):
-										for l in k.isotopes:
-											sumInt += l.expInt
-								break
-						fw.write("\t"+str(sumInt))
-					fw.write("\n")
-					# List of monoisotopic masses
-					fw.write("Monoisotopic Mass")
-					for i in compositions:
-						masses = ""
-						charge = 0
-						for j in total:
-							if len(j[1]) == len(compositions):
-								for k in j[1]:
-									if k.composition == i[0] and float(k.time) == float(i[1]):
-										for l in k.isotopes:
-											if l.charge != charge:
-												charge = l.charge
-												if masses == "":
-													masses ="["+str(l.mass)+"]"
-												else:
-													masses += " ["+str(l.mass)+"]"
-								break
-						fw.write("\t"+masses)
-					fw.write("\n")
-					# Actual data
-					for i in total:
-						fw.write(str(i[0]))
-						for j in compositions:
-							sumInt = 0
-							for k in i[1]:
-								try:
-									if k.composition == j[0] and float(k.time) == float(j[1]):
-										for l in k.isotopes:
-											sumInt += l.background
-								except AttributeError:
-									pass
+						for k in i[1]:
+							try:
+								if k.composition == j[0] and float(k.time) == float(j[1]):
+									for l in k.isotopes:
+										sumInt += l.background
+							except AttributeError:
+								pass
+						if sumInt > 0:
 							fw.write("\t"+str(sumInt))
-						fw.write("\n")
+						else:
+							fw.write("\t")
 					fw.write("\n")
-
-				####################
-				# Per charge state #
-				####################
-				if self.analytePerCharge.get() == 1:
-					minCharge = sys.maxint
-					maxCharge = 0
-					for i in total:
-						for j in compositions:
-							for k in i[1]:
-								try:
-									if k.composition == j[0] and float(k.time) == float(j[1]):
-										for l in k.isotopes:
-											if int(l.charge) < minCharge:
-												minCharge = int(l.charge)
-											elif int(l.charge) > maxCharge:
-												maxCharge = int(l.charge)
-								except AttributeError:
-									pass
-					for i in xrange(minCharge,maxCharge+1):
-						# This is a time intensive function
-						# Header
-						fw.write("BCK ("+str(i)+"+)")
-						for j in compositions:
-							fw.write("\t"+str(j[0]))
-						fw.write("\n")
-						# List of theoretical areas (not being correct?)
-						fw.write("Fraction")
-						for j in compositions:
-							sumInt = 0
-							for k in total:
-								if len(k[1]) == len(compositions):
-									for l in k[1]:
-										if l.composition == j[0] and float(l.time) == float(j[1]):
-											for m in l.isotopes:
-												if int(m.charge) == i:
-													sumInt += m.expInt
-									break
-							fw.write("\t"+str(sumInt))
-						fw.write("\n")
-						# List of monoisotopic masses
-						fw.write("Monoisotopic Mass")
-						for j in compositions:
-							masses = ""
-							for k in total:
-								if len(k[1]) == len(compositions):
-									for l in k[1]:
-										if l.composition == j[0] and float(l.time) == float(j[1]):
-											for m in l.isotopes:
-												if int(m.charge) == i:
-													masses ="["+str(m.mass)+"]"
-													break
-							fw.write("\t"+masses)
-						fw.write("\n")
-						# Actual data
-						for j in total:
-							fw.write(str(j[0]))
-							for k in compositions:
-								sumInt = 0
-								for l in j[1]:
-									try:
-										if l.composition == k[0] and float(l.time) == float(k[1]):
-											for m in l.isotopes:
-												if int(m.charge) == i:
-													sumInt += m.background
-									except AttributeError:
-										pass
-								fw.write("\t"+str(sumInt))
-							fw.write("\n")
-						fw.write("\n")
-
+				fw.write("\n")
 
 			#######################
 			# Analyte Noise Value #
 			#######################
 			if self.analyteNoise.get() == 1:
-				#########################
-				# Combined charge state #
-				#########################
-				if self.analytePerCharge.get() == 0:
-					# Header
-					fw.write("Noise")
-					for i in compositions:
-						fw.write("\t"+str(i[0]))
-					fw.write("\n")
-					# List of theoretical areas
-					fw.write("Fraction")
-					for i in compositions:
+				# Header
+				fw.write("Noise")
+				for i in compositions:
+					fw.write("\t"+str(i[0]))
+				fw.write("\n")
+				# List of theoretical areas
+				fw.write("Fraction")
+				for i in compositions:
+					sumInt = 0
+					for j in total:
+						if len(j[1]) == len(compositions):
+							for k in j[1]:
+								if k.composition == i[0] and float(k.time) == float(i[1]):
+									for l in k.isotopes:
+										sumInt += l.expInt
+							break
+					fw.write("\t"+str(sumInt))
+				fw.write("\n")
+				# List of monoisotopic masses
+				fw.write("Monoisotopic Mass")
+				for i in compositions:
+					masses = ""
+					charge = 0
+					for j in total:
+						if len(j[1]) == len(compositions):
+							for k in j[1]:
+								if k.composition == i[0] and float(k.time) == float(i[1]):
+									for l in k.isotopes:
+										if l.charge != charge:
+											charge = l.charge
+											if masses == "":
+												masses ="["+str(l.mass)+"]"
+											else:
+												masses += " ["+str(l.mass)+"]"
+							break
+					fw.write("\t"+masses)
+				fw.write("\n")
+				# Actual data
+				for i in total:
+					fw.write(str(i[0]))
+					for j in compositions:
 						sumInt = 0
-						for j in total:
-							if len(j[1]) == len(compositions):
-								for k in j[1]:
-									if k.composition == i[0] and float(k.time) == float(i[1]):
-										for l in k.isotopes:
-											sumInt += l.expInt
-								break
-						fw.write("\t"+str(sumInt))
-					fw.write("\n")
-					# List of monoisotopic masses
-					fw.write("Monoisotopic Mass")
-					for i in compositions:
-						masses = ""
-						charge = 0
-						for j in total:
-							if len(j[1]) == len(compositions):
-								for k in j[1]:
-									if k.composition == i[0] and float(k.time) == float(i[1]):
-										for l in k.isotopes:
-											if l.charge != charge:
-												charge = l.charge
-												if masses == "":
-													masses ="["+str(l.mass)+"]"
-												else:
-													masses += " ["+str(l.mass)+"]"
-								break
-						fw.write("\t"+masses)
-					fw.write("\n")
-					# Actual data
-					for i in total:
-						fw.write(str(i[0]))
-						for j in compositions:
-							sumInt = 0
-							for k in i[1]:
-								try:
-									if k.composition == j[0] and float(k.time) == float(j[1]):
-										for l in k.isotopes:
-											sumInt += l.noise
-								except AttributeError:
-									pass
+						for k in i[1]:
+							try:
+								if k.composition == j[0] and float(k.time) == float(j[1]):
+									sumInt += k.isotopes[0].noise
+							except AttributeError:
+								pass
+						if sumInt > 0:
 							fw.write("\t"+str(sumInt))
-						fw.write("\n")
+						else:
+							fw.write("\t")
 					fw.write("\n")
-
-				####################
-				# Per charge state #
-				####################
-				if self.analytePerCharge.get() == 1:
-					minCharge = sys.maxint
-					maxCharge = 0
-					for i in total:
-						for j in compositions:
-							for k in i[1]:
-								try:
-									if k.composition == j[0] and float(k.time) == float(j[1]):
-										for l in k.isotopes:
-											if int(l.charge) < minCharge:
-												minCharge = int(l.charge)
-											elif int(l.charge) > maxCharge:
-												maxCharge = int(l.charge)
-								except AttributeError:
-									pass
-					for i in xrange(minCharge,maxCharge+1):
-						# This is a time intensive function
-						# Header
-						fw.write("Noise ("+str(i)+"+)")
-						for j in compositions:
-							fw.write("\t"+str(j[0]))
-						fw.write("\n")
-						# List of theoretical areas (not being correct?)
-						fw.write("Fraction")
-						for j in compositions:
-							sumInt = 0
-							for k in total:
-								if len(k[1]) == len(compositions):
-									for l in k[1]:
-										if l.composition == j[0] and float(l.time) == float(j[1]):
-											for m in l.isotopes:
-												if int(m.charge) == i:
-													sumInt += m.expInt
-									break
-							fw.write("\t"+str(sumInt))
-						fw.write("\n")
-						# List of monoisotopic masses
-						fw.write("Monoisotopic Mass")
-						for j in compositions:
-							masses = ""
-							for k in total:
-								if len(k[1]) == len(compositions):
-									for l in k[1]:
-										if l.composition == j[0] and float(l.time) == float(j[1]):
-											for m in l.isotopes:
-												if int(m.charge) == i:
-													masses ="["+str(m.mass)+"]"
-													break
-							fw.write("\t"+masses)
-						fw.write("\n")
-						# Actual data
-						for j in total:
-							fw.write(str(j[0]))
-							for k in compositions:
-								sumInt = 0
-								for l in j[1]:
-									try:
-										if l.composition == k[0] and float(l.time) == float(k[1]):
-											for m in l.isotopes:
-												if int(m.charge) == i:
-													sumInt += m.noise
-									except AttributeError:
-										pass
-								fw.write("\t"+str(sumInt))
-							fw.write("\n")
-						fw.write("\n")
+				fw.write("\n")
 
 			#######################
 			# Alignment Residuals #
@@ -2096,14 +1624,13 @@ class App():
 					RMS = 0
 					fw.write(str(i[0]))
 					for j in header[1:]:
-						flag = 0
 						for k in i[1]:
 							if j[0] == k[0]:
-								fw.write("\t"+str(float(k[3])-float(k[1])))
-								RMS += (float(k[3])-float(k[1]))**2
-								flag = 1
-						if flag == 0:
-							fw.write("\t")
+								try:
+									fw.write("\t"+str(float(k[3])-float(k[1])))
+									RMS += (float(k[3])-float(k[1]))**2
+								except ValueError:
+									pass
 					fw.write("\t"+str(math.sqrt(RMS))+"\n")
 				fw.write("\n")
 
@@ -2420,22 +1947,22 @@ class App():
 		master.outputWindow = 1
 		def select_all(self):
 			master.analyteIntensity.set(1)
+			master.analyteIntBck.set(1)
 			master.analyteRelIntensity.set(1)
+			master.analyteRelIntBck.set(1)
 			master.analyteBackground.set(1)
 			master.analyteNoise.set(1)
-			master.analytePerCharge.set(1)
-			master.analyteBckSub.set(1)
 			master.alignmentQC.set(1)
 			master.qualityControl.set(1)
 			master.ppmQC.set(1)
 			master.SN.set(1)
 		def select_none(self):
 			master.analyteIntensity.set(0)
+			master.analyteIntBck.set(0)
 			master.analyteRelIntensity.set(0)
+			master.analyteRelIntBck.set(0)
 			master.analyteBackground.set(0)
 			master.analyteNoise.set(0)
-			master.analytePerCharge.set(0)
-			master.analyteBckSub.set(0)
 			master.alignmentQC.set(0)
 			master.qualityControl.set(0)
 			master.ppmQC.set(0)
@@ -2451,26 +1978,26 @@ class App():
 		self.none.grid(row = 0, column = 1, sticky = E)
 		self.ai = Checkbutton(top, text = "Analyte Intensity", variable = master.analyteIntensity, onvalue = 1, offvalue = 0)
 		self.ai.grid(row = 1, column = 0, sticky = W)
+		self.aiBck = Checkbutton(top, text = "Analyte Intensity (Background subtracted)", variable = master.analyteIntBck, onvalue = 1, offvalue = 0)
+		self.aiBck.grid(row = 2, column = 0, sticky = W)
 		self.ri = Checkbutton(top, text = "Relative Intensity", variable = master.analyteRelIntensity, onvalue = 1, offvalue = 0)
-		self.ri.grid(row = 2, column = 0, sticky = W)
+		self.ri.grid(row = 3, column = 0, sticky = W)
+		self.riBck = Checkbutton(top, text = "Relative Intensity (Background subtracted)", variable = master.analyteRelIntBck, onvalue = 1, offvalue = 0)
+		self.riBck.grid(row = 4, column = 0, sticky = W)
 		self.back = Checkbutton(top, text = "Analyte Background", variable = master.analyteBackground, onvalue = 1, offvalue = 0)
-		self.back.grid(row = 3, column = 0, sticky = W)
+		self.back.grid(row = 5, column = 0, sticky = W)
 		self.analNoise = Checkbutton(top, text = "Analyte Noise", variable = master.analyteNoise, onvalue = 1, offvalue = 0)
-		self.analNoise.grid(row = 4, column = 0, sticky = W)
-		self.chargeState = Checkbutton(top, text = "Areas per Charge State", variable = master.analytePerCharge, onvalue = 1, offvalue = 0)
-		self.chargeState.grid(row = 1, column = 1, sticky = W)
-		self.bckSub = Checkbutton(top, text = "Background subtracted Areas", variable = master.analyteBckSub, onvalue = 1, offvalue = 0)
-		self.bckSub.grid(row = 2, column = 1, sticky = W)
+		self.analNoise.grid(row = 6, column = 0, sticky = W)
 		self.align = Checkbutton(top, text="Alignment Residuals", variable=master.alignmentQC, onvalue=1, offvalue=0)
-		self.align.grid(row = 5, column=0, sticky=W)
+		self.align.grid(row=7, column=0, sticky=W)
 		self.qc = Checkbutton(top, text = "QC", variable = master.qualityControl, onvalue = 1, offvalue = 0)
-		self.qc.grid(row = 6, column = 0, sticky = W)
+		self.qc.grid(row = 8, column = 0, sticky = W)
 		self.ppm = Checkbutton(top, text = "PPM Error", variable = master.ppmQC, onvalue = 1, offvalue = 0)
-		self.ppm.grid(row = 7, column = 0, sticky = W)
+		self.ppm.grid(row = 9, column = 0, sticky = W)
 		self.snratio = Checkbutton(top, text = "Signal to Noise", variable = master.SN, onvalue = 1, offvalue = 0)
-		self.snratio.grid(row = 8, column = 0, sticky = W)
+		self.snratio.grid(row = 10, column = 0, sticky = W)
 		self.button = Button(top,text='Ok',command = lambda: close(self))
-		self.button.grid(row = 9, column = 0, columnspan = 2)
+		self.button.grid(row = 11, column = 0, columnspan = 2)
 		top.lift()
 
 	def binarySearch(self, array, target, high, direction):
@@ -2831,8 +2358,7 @@ class App():
 			else:
 				lowMz = self.binarySearch(array,float(i[1])-float(i[3]),len(array)-1,'left')
 				highMz = self.binarySearch(array,float(i[1])+float(i[3]),len(array)-1,'right')
-				if int(i[0].split("_")[-1]) == 0:
-					background = self.getBackground(array, float(i[1]), charge, float(i[3]))
+				background = self.getBackground(array, float(i[1]), charge, float(i[3]))
 				if lowMz and highMz:
 					try:
 						range(lowMz,highMz)
@@ -2860,7 +2386,7 @@ class App():
 					######################################################################
 					if self.ppmQC.get() == 1:
 						try:
-							newX = numpy.linspace(x_points[0],x_points[-1],2500*(x_points[-1]-x_points[0]))
+							newX = numpy.linspace(x_points[0],x_points[-1],1000)
 							f = interp1d(x_points,y_points, kind='cubic')
 							ySPLINE = f(newX)
 							for index, j in enumerate(ySPLINE):
