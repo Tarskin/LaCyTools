@@ -1356,7 +1356,7 @@ class App():
 													sumInt += m.obsInt
 									except AttributeError:
 										pass
-								fw.write("\t"+str(sumInt))
+									fw.write("\t"+str(sumInt))
 							fw.write("\n")
 						fw.write("\n")
 
@@ -2243,18 +2243,18 @@ class App():
 					for j in total:
 						fw.write(str(j[0]))
 						for k in compositions:
-							sumInt = 0.0
-							qc = 0.0
+							sumInt = 0
+							qc = 0
 							for l in j[1]:
 								try:
 									if l.composition == k[0] and float(l.time) == float(k[1]):
 										for m in l.isotopes:
 											if int(m.charge) == i:
-												sumInt += float(m.obsInt) - float(m.background)
+												sumInt += m.obsInt
 										for m in l.isotopes:
 											if int(m.charge) == i:
 												try:
-													qc += abs(((float(m.obsInt) - float(m.background)) / float(sumInt)) - m.expInt)
+													qc += ((float(m.obsInt) / float(sumInt)) - m.expInt)**2
 												except ZeroDivisionError:
 													pass
 								except AttributeError:
