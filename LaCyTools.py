@@ -518,7 +518,7 @@ class App():
 		for filename in random.sample(filenames, min(3, len(filenames))):
 			array = []
 			self.inputFile = filename
-			self.readData(array,None)
+			self.readData(array)
 
 			# loop over spectra
 			for spectrum in array:
@@ -558,7 +558,7 @@ class App():
 		for count, filename in enumerate(filenames):
 			array = []
 			self.inputFile = filename
-			self.readData(array,None)
+			self.readData(array)
 
 			# loop over spectra
 			for scan, spectrum in enumerate(array):
@@ -2608,17 +2608,13 @@ class App():
 			peaks = peaks.split("</peaks>")[0]
 
 		if peaks:
-			if readTimes:
-				flag = 0
-				for i in readTimes:
-					if float(rt) >= i[0] and float(rt) <= i[1]:
-						self.mzXMLDecoder(rt, peaks, precision, compression, byteOrder, array)
-						flag = 1
-				if flag == 0:
-					array.append((float(rt),None))
-			else:
-				self.mzXMLDecoder(rt, peaks, precision, compression, byteOrder, array)
-
+			flag = 0
+			for i in readTimes:
+				if float(rt) >= i[0] and float(rt) <= i[1]:
+					self.mzXMLDecoder(rt, peaks, precision, compression, byteOrder, array)
+					flag = 1
+			if flag == 0:
+				array.append((float(rt),None))
 
 	######################################################
 	# START OF FUNCTIONS RELATED TO PARSING ANALYTE FILE #
