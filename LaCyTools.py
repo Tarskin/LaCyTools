@@ -34,7 +34,7 @@ EXTRACTION = "aligned"
 OUTPUT = "Summary.txt"
 
 # Alignment Parameters
-ALIGNMENT_TIME_WINDOW = 45      # The +/- time window that the program is allowed to look for the feature for alignment (EIC time axis)
+ALIGNMENT_TIME_WINDOW = 10      # The +/- time window that the program is allowed to look for the feature for alignment (EIC time axis)
 ALIGNMENT_MASS_WINDOW = 0.1     # The +/- m/z window (not charge state corrected) that is used to detect the feature used for alignment. Afterwards a spline fit is used to detect the measured time
 ALIGNMENT_BACKGROUND_MULTIPLIER = 2 # The multiplier of the timewindow used for background determination
 ALIGNMENT_S_N_CUTOFF = 9        # The minimum S/N value of a feature to be used for alignment
@@ -52,12 +52,12 @@ MASS_MODIFIERS = []             # The mass modifiers refer to changes to the ana
 
 # Extraction Parameters
 EXTRACTION_TYPE = 2             # 1 = Max, 0 = Total and 2 = Area
-MASS_WINDOW = 0.15              # The +/- m/z window used around each feature for extraction
+MASS_WINDOW = 0.2               # The +/- m/z window used around each feature for extraction
 TIME_WINDOW = 8                 # The +/- time window that will be used around a cluster, to create the sum spectrum
-MIN_CHARGE = 4                  # The minimum charge state that the program will integrate for all features (unless overwritten in the composition file)
-MAX_CHARGE = 4                  # The maximum charge state that the program will integrate for all features (unless overwritten in the composition file)
+MIN_CHARGE = 2                  # The minimum charge state that the program will integrate for all features (unless overwritten in the composition file)
+MAX_CHARGE = 3                  # The maximum charge state that the program will integrate for all features (unless overwritten in the composition file)
 #MIN_CONTRIBUTION = 0.01        # Minimum contribution to isotopic distrubition to be included (NOT BEING USED ATM)
-MIN_TOTAL = 0.75                # Desired contribution of extracted isotopes of total isotopic pattern
+MIN_TOTAL = 0.99                # Desired contribution of extracted isotopes of total isotopic pattern
 BACKGROUND_WINDOW = 10          # Total m/z window (+ and -) to search for background
 
 # The maximum distance between distinct isotopic masses to be 'pooled'
@@ -75,254 +75,264 @@ S34 = [('34S',0.0429,1.9958)]
 S36 = [('36S',0.0002,3.99501)]
 
 # Building block properties
-BLOCKS = {  'F':{'mass':146.05790879894,
-                'carbons':6,
-                'hydrogens':10,
-                'nitrogens':0,
-                'oxygens':4,
-                'sulfurs':0},
-            'H':{'mass':162.0528234185,
-                'carbons':6,
-                'hydrogens':10,
-                'nitrogens':0,
-                'oxygens':5,
-                'sulfurs':0},
-            'N':{'mass':203.07937251951,
-                'carbons':8,
-                'hydrogens':13,
-                'nitrogens':1,
-                'oxygens':5,
-                'sulfurs':0},
-            'S':{'mass':291.09541650647,
-                'carbons':11,
-                'hydrogens':17,
-                'nitrogens':1,
-                'oxygens':8,
-                'sulfurs':0},
-            'L':{'mass':273.08485182277,
-                'carbons':11,
-                'hydrogens':15,
-                'nitrogens':1,
-                'oxygens':7,
-                'sulfurs':0},
-            'M':{'mass':305.11106657061,
-                'carbons':12,
-                'hydrogens':19,
-                'nitrogens':1,
-                'oxygens':8,
-                'sulfurs':0},
-            'E':{'mass':319.12671663475,
-                'carbons':13,
-                'hydrogens':21,
-                'nitrogens':1,
-                'oxygens':8,
-                'sulfurs':0},
-            # Reducing end based mass modifers
-            'aa':{'mass':139.06332853255,
-                'carbons':7,
-                'hydrogens':9,
-                'nitrogens':1,
-                'oxygens':2,
-                'sulfurs':0},
-            'ab':{'mass':138.07931294986,
-                'carbons':7,
-                'hydrogens':10,
-                'nitrogens':2,
-                'oxygens':1,
-                'sulfurs':0},
-            'free':{'mass':18.0105646837,
-                'carbons':0,
-                'hydrogens':2,
-                'nitrogens':0,
-                'oxygens':1,
-                'sulfurs':0},
-            # Adduct based mass modifers
-            'sodium':{'mass':22.9897692809,
-                'carbons':0,
-                'hydrogens':0,
-                'nitrogens':0,
-                'oxygens':0,
-                'sulfurs':0},
-            'potassium':{'mass':38.96370668,
-                'carbons':0,
-                'hydrogens':0,
-                'nitrogens':0,
-                'oxygens':0,
-                'sulfurs':0},
-            'P':{'mass':79.96633088875,
-                'carbons':0,
-                'hydrogens':1,
-                'nitrogens':0,
-                'oxygens':3,
-                'sulfurs':0},
-            'Su':{'mass':79.95681485868,
-                'carbons':0,
-                'hydrogens':0,
-                'nitrogens':0,
-                'oxygens':3,
-                'sulfurs':1},
-            # Charge based mass modifiers
-            'proton':{'mass':1.007276466812,
-                'carbons':0,
-                'hydrogens':0,
-                'nitrogens':0,
-                'oxygens':0,
-                'sulfurs':0},
-            'neg_proton':{'mass':-1.007276466812,
-                'carbons':0,
-                'hydrogens':0,
-                'nitrogens':0,
-                'oxygens':0,
-                'sulfurs':0},
-            'electron':{'mass':0.00054857990946,
-                'carbons':0,
-                'hydrogens':0,
-                'nitrogens':0,
-                'oxygens':0,
-                'sulfurs':0},
-            'neg_electron':{'mass':-0.00054857990946,
-                'carbons':0,
-                'hydrogens':0,
-                'nitrogens':0,
-                'oxygens':0,
-                'sulfurs':0},
-            # Organic chemistry base elements
-            '_H':{'mass':1.007825,
-                'carbons':0,
-                'hydrogens':1,
-                'nitrogens':0,
-                'oxygens':0,
-                'sulfurs':0},
-            '_C':{'mass':12.000000,
-                'carbons':1,
-                'hydrogens':0,
-                'nitrogens':0,
-                'oxygens':0,
-                'sulfurs':0},
-            '_N':{'mass':14.003074,
-                'carbons':0,
-                'hydrogens':0,
-                'nitrogens':1,
-                'oxygens':0,
-                'sulfurs':0},
-            '_O':{'mass':15.994915,
-                'carbons':0,
-                'hydrogens':0,
-                'nitrogens':0,
-                'oxygens':1,
-                'sulfurs':0},
-            '_S':{'mass':31.972071,
-                'carbons':0,
-                'hydrogens':0,
-                'nitrogens':0,
-                'oxygens':0,
-                'sulfurs':1},
-            '_P':{'mass':30.973761,
-                'carbons':0,
-                'hydrogens':0,
-                'nitrogens':0,
-                'oxygens':0,
-                'sulfurs':1},
-            '_F':{'mass':18.998403,
-                'carbons':0,
-                'hydrogens':0,
-                'nitrogens':0,
-                'oxygens':0,
-                'sulfurs':0},
-            # Mouse (?) related monosaccharides
-            'G':{'mass':307.0903311261,
-                'carbons':11,
-                'hydrogens':17,
-                'nitrogens':1,
-                'oxygens':9,
-                'sulfurs':0},
-            'Gl':{'mass':289.0797664424,
-                'carbons':11,
-                'hydrogens':15,
-                'nitrogens':1,
-                'oxygens':8,
-                'sulfurs':0},
-            'Ge':{'mass':335.1216312544,
-                'carbons':13,
-                'hydrogens':21,
-                'nitrogens':1,
-                'oxygens':9,
-                'sulfurs':0},
-            'Ac':{'mass':42.0105646837,
-                'carbons':2,
-                'hydrogens':2,
-                'nitrogens':0,
-                'oxygens':1,
-                'sulfurs':0},
-            # Immunoglobulins
-            'IgGI':{'mass':1188.5047,   # Get exacter mass
-                'carbons':50,
-                'hydrogens':72,
-                'nitrogens':14,
-                'oxygens':20,
-                'sulfurs':0},
-            'IgGIV':{'mass':1172.5098,  # Get exacter mass
-                'carbons':50,
-                'hydrogens':72,
-                'nitrogens':14,
-                'oxygens':19,
-                'sulfurs':0},
-            'IgGII':{'mass':1156.5149,  # Get exacter mass
-                'carbons':50,
-                'hydrogens':72,
-                'nitrogens':14,
-                'oxygens':18,
-                'sulfurs':0},
-            'Kathrin':{'mass':1156.5149,    # Get exacter mass
-                'carbons':50,
-                'hydrogens':72,
-                'nitrogens':14,
-                'oxygens':18,
-                'sulfurs':0},
-            # AAT
-            'NLT':{'mass':3690.8165,    # Get exacter mass
-                'carbons':163,
-                'hydrogens':251,
-                'nitrogens':43,
-                'oxygens':55,
-                'sulfurs':0},
-            'NST':{'mass':3180.6277,    # Get exacter mass
-                'carbons':143,
-                'hydrogens':225,
-                'nitrogens':37,
-                'oxygens':43,
-                'sulfurs':1},
-            'NAT':{'mass':1754.8879,    # Get exacter mass
-                'carbons':83,
-                'hydrogens':122,
-                'nitrogens':18,
-                'oxygens':24,
-                'sulfurs':0},
-            # Four of Albert's Peptides
-            'Q':{'mass':4135.882086,
-                'carbons':177,
-                'hydrogens':270,
-                'nitrogens':50,
-                'oxygens':59,
-                'sulfurs':3},
-            'R':{'mass':2962.590442,
-                'carbons':128,
-                'hydrogens':219,
-                'nitrogens':37,
-                'oxygens':41,
-                'sulfurs':1},
-            'T':{'mass':2346.1348023,
-                'carbons':101,
-                'hydrogens':163,
-                'nitrogens':27,
-                'oxygens':33,
-                'sulfurs':2},
-            'U':{'mass':2183.0709257,
-                'carbons':92,
-                'hydrogens':154,
-                'nitrogens':26,
-                'oxygens':33,
-                'sulfurs':2}}
+BLOCKS = {  #######################
+			# Structural Features #
+			#######################
+				###################
+				# Monosaccharides #
+				###################
+					'F':{'mass':146.05790879894,
+						'carbons':6,
+						'hydrogens':10,
+						'nitrogens':0,
+						'oxygens':4,
+						'sulfurs':0},
+					'H':{'mass':162.0528234185,
+						'carbons':6,
+						'hydrogens':10,
+						'nitrogens':0,
+						'oxygens':5,
+						'sulfurs':0},
+					'N':{'mass':203.07937251951,
+						'carbons':8,
+						'hydrogens':13,
+						'nitrogens':1,
+						'oxygens':5,
+						'sulfurs':0},
+					'S':{'mass':291.09541650647,
+						'carbons':11,
+						'hydrogens':17,
+						'nitrogens':1,
+						'oxygens':8,
+						'sulfurs':0},
+					'L':{'mass':273.08485182277,
+						'carbons':11,
+						'hydrogens':15,
+						'nitrogens':1,
+						'oxygens':7,
+						'sulfurs':0},
+					'M':{'mass':305.11106657061,
+						'carbons':12,
+						'hydrogens':19,
+						'nitrogens':1,
+						'oxygens':8,
+						'sulfurs':0},
+					'E':{'mass':319.12671663475,
+						'carbons':13,
+						'hydrogens':21,
+						'nitrogens':1,
+						'oxygens':8,
+						'sulfurs':0},
+				#########################
+				# Mouse Monosaccharides #
+				#########################
+					'G':{'mass':307.0903311261,
+						'carbons':11,
+						'hydrogens':17,
+						'nitrogens':1,
+						'oxygens':9,
+						'sulfurs':0},
+					'Gl':{'mass':289.0797664424,
+						'carbons':11,
+						'hydrogens':15,
+						'nitrogens':1,
+						'oxygens':8,
+						'sulfurs':0},
+					'Ge':{'mass':335.1216312544,
+						'carbons':13,
+						'hydrogens':21,
+						'nitrogens':1,
+						'oxygens':9,
+						'sulfurs':0},
+				#######################
+				# Sugar Modifications #
+				#######################
+					'P':{'mass':79.96633088875,
+						'carbons':0,
+						'hydrogens':1,
+						'nitrogens':0,
+						'oxygens':3,
+						'sulfurs':0},
+					'Su':{'mass':79.95681485868,
+						'carbons':0,
+						'hydrogens':0,
+						'nitrogens':0,
+						'oxygens':3,
+						'sulfurs':1},
+					'Ac':{'mass':42.0105646837,
+						'carbons':2,
+						'hydrogens':2,
+						'nitrogens':0,
+						'oxygens':1,
+						'sulfurs':0},
+				##############################
+				# Reducing End Modifications #
+				##############################
+					'aa':{'mass':139.06332853255,
+						'carbons':7,
+						'hydrogens':9,
+						'nitrogens':1,
+						'oxygens':2,
+						'sulfurs':0},
+					'ab':{'mass':138.07931294986,
+						'carbons':7,
+						'hydrogens':10,
+						'nitrogens':2,
+						'oxygens':1,
+						'sulfurs':0},
+					'free':{'mass':18.0105646837,
+						'carbons':0,
+						'hydrogens':2,
+						'nitrogens':0,
+						'oxygens':1,
+						'sulfurs':0},
+			###################
+			# Charge Carriers #
+			###################
+					#################
+					# Positive Mode #
+					#################
+					'sodium':{'mass':22.9897692809,
+						'carbons':0,
+						'hydrogens':0,
+						'nitrogens':0,
+						'oxygens':0,
+						'sulfurs':0},
+					'potassium':{'mass':38.96370668,
+						'carbons':0,
+						'hydrogens':0,
+						'nitrogens':0,
+						'oxygens':0,
+						'sulfurs':0},
+					'proton':{'mass':1.007276466812,
+						'carbons':0,
+						'hydrogens':0,
+						'nitrogens':0,
+						'oxygens':0,
+						'sulfurs':0},
+					#################
+					# Negative Mode #
+					#################
+					'protonLoss':{'mass':-1.007276466812,
+						'carbons':0,
+						'hydrogens':0,
+						'nitrogens':0,
+						'oxygens':0,
+						'sulfurs':0},
+					'electron':{'mass':0.00054857990946,
+						'carbons':0,
+						'hydrogens':0,
+						'nitrogens':0,
+						'oxygens':0,
+						'sulfurs':0},
+			############
+			# Elements #
+			############
+					'_H':{'mass':1.007825,
+						'carbons':0,
+						'hydrogens':1,
+						'nitrogens':0,
+						'oxygens':0,
+						'sulfurs':0},
+					'_C':{'mass':12.000000,
+						'carbons':1,
+						'hydrogens':0,
+						'nitrogens':0,
+						'oxygens':0,
+						'sulfurs':0},
+					'_N':{'mass':14.003074,
+						'carbons':0,
+						'hydrogens':0,
+						'nitrogens':1,
+						'oxygens':0,
+						'sulfurs':0},
+					'_O':{'mass':15.994915,
+						'carbons':0,
+						'hydrogens':0,
+						'nitrogens':0,
+						'oxygens':1,
+						'sulfurs':0},
+					'_S':{'mass':31.972071,
+						'carbons':0,
+						'hydrogens':0,
+						'nitrogens':0,
+						'oxygens':0,
+						'sulfurs':1},
+					'_P':{'mass':30.973761,
+						'carbons':0,
+						'hydrogens':0,
+						'nitrogens':0,
+						'oxygens':0,
+						'sulfurs':1},
+					'_F':{'mass':18.998403,
+						'carbons':0,
+						'hydrogens':0,
+						'nitrogens':0,
+						'oxygens':0,
+						'sulfurs':0},
+					'_Na':{'mass':22.989770,
+						'carbons':0,
+						'hydrogens':0,
+						'nitrogens':0,
+						'oxygens':0,
+						'sulfurs':0},
+					'_K':{'mass':38.963708,
+						'carbons':0,
+						'hydrogens':0,
+						'nitrogens':0,
+						'oxygens':0,
+						'sulfurs':0},
+			#################
+			# Custom Blocks #
+			#################
+					####################
+					# Immunoglobulin G #
+					####################
+					'IgGI':{'mass':1188.5047,	# Get exacter mass
+						'carbons':50,
+						'hydrogens':72,
+						'nitrogens':14,
+						'oxygens':20,
+						'sulfurs':0},
+					'IgGIV':{'mass':1172.5098,	# Get exacter mass
+						'carbons':50,
+						'hydrogens':72,
+						'nitrogens':14,
+						'oxygens':19,
+						'sulfurs':0},
+					'IgGII':{'mass':1156.5149,	# Get exacter mass
+						'carbons':50,
+						'hydrogens':72,
+						'nitrogens':14,
+						'oxygens':18,
+						'sulfurs':0},
+					####################
+					# Immunoglobulin A #
+					####################
+					'Q':{'mass':4135.882086,
+						'carbons':177,
+						'hydrogens':270,
+						'nitrogens':50,
+						'oxygens':59,
+						'sulfurs':3},
+					'R':{'mass':2962.590442,
+						'carbons':128,
+						'hydrogens':219,
+						'nitrogens':37,
+						'oxygens':41,
+						'sulfurs':1},
+					'T':{'mass':2346.1348023,
+						'carbons':101,
+						'hydrogens':163,
+						'nitrogens':27,
+						'oxygens':33,
+						'sulfurs':2},
+					'U':{'mass':2183.0709257,
+						'carbons':92,
+						'hydrogens':154,
+						'nitrogens':26,
+						'oxygens':33,
+						'sulfurs':2}}
 UNITS = BLOCKS.keys()
 
 ###################
@@ -1384,7 +1394,10 @@ class App():
                                                     sumInt += m.obsInt
                                     except AttributeError:
                                         pass
+                                if sumInt > 0:
                                     fw.write("\t"+str(sumInt))
+                                else:
+                                    fw.write("\t")
                             fw.write("\n")
                         fw.write("\n")
 
@@ -1518,7 +1531,10 @@ class App():
                                                     sumInt += max(0, m.obsInt - m.background)
                                     except AttributeError:
                                         pass
+                                if sumInt > 0:
                                     fw.write("\t"+str(sumInt))
+                                else:
+                                    fw.write("\t")
                             fw.write("\n")
                         fw.write("\n")
 
@@ -2278,11 +2294,11 @@ class App():
                                     if l.composition == k[0] and float(l.time) == float(k[1]):
                                         for m in l.isotopes:
                                             if int(m.charge) == i:
-                                                sumInt += m.obsInt
+                                                sumInt += float(m.obsInt) - float(m.background)
                                         for m in l.isotopes:
                                             if int(m.charge) == i:
                                                 try:
-                                                    qc += ((float(m.obsInt) / float(sumInt)) - m.expInt)**2
+                                                    qc += abs(((float(m.obsInt) - float(m.background)) / float(sumInt)) - m.expInt)
                                                 except ZeroDivisionError:
                                                     pass
                                 except AttributeError:
