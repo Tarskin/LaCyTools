@@ -2294,11 +2294,12 @@ class App():
                                     if l.composition == k[0] and float(l.time) == float(k[1]):
                                         for m in l.isotopes:
                                             if int(m.charge) == i:
-                                                sumInt += float(m.obsInt) - float(m.background)
+                                                sumInt += max(float(m.obsInt) - float(m.background),0)
                                         for m in l.isotopes:
                                             if int(m.charge) == i:
                                                 try:
-                                                    qc += abs(((float(m.obsInt) - float(m.background)) / float(sumInt)) - m.expInt)
+                                                    maxIntensityBackCorrected = max(float(m.obsInt) - float(m.background),0)
+                                                    qc += abs((maxIntensityBackCorrected  / float(sumInt)) - m.expInt)
                                                 except ZeroDivisionError:
                                                     pass
                                 except AttributeError:
