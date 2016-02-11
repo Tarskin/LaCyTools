@@ -1109,24 +1109,15 @@ class App():
         self.ptFile.flush()
 
     def feature_finder(self,data,lowMass,highMass):
-        low, high = 0, len(data)
-        while low != high:
-            mid = (low + high) // 2
-            mz = data[mid][0]
-            if mz < lowMass:
-                low = mid + 1
-            else:
-                high = mid
-        start, high = low, len(data)
-        while low != high:
-            mid = (low + high) // 2
-            mz = data[mid][0]
-            if mz > highMass:
-                high = mid
-            else:
-                low = mid + 1
-        end = high
-        return max(I for mz, I in data[start:end])
+        # Proper fix
+        intensity = 0
+        start = self.binarySearch(data,lowMass,len(data)-1,'left')
+        end = self.binarySearch(data,highMass,len(data)-1,'right')
+        for i in data[start:end]:
+            if i[1] > intensity:
+                intensity = i[1]
+        return intensity
+
 
     def combineResults(self):
         """ This function reads all the raw files and creates the summary
