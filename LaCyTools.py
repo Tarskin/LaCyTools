@@ -451,8 +451,11 @@ class App():
         if b < 0.:
             penalty = abs(2.-b)*10000
         return a*x**b + c + penalty
+        
+    def fitFuncLin(self, x,a,b):
+        return a*x + b
 
-    def calcQuadratic(self,data):
+    def calcQuadratic(self,data,func):
         """ This function fits the specified function in 'fitFunc'
         to the data, using the curve_fit package from scipy.optimize.
 
@@ -465,7 +468,10 @@ class App():
             expected.append(i[0])
             observed.append(i[1])
         try:
-            z = curve_fit(self.fitFunc, observed, expected)#,maxfev=10000)
+            if func == "PowerLaw":
+                z = curve_fit(self.fitFunc, observed, expected)#,maxfev=10000)
+            elif func == "Linear":
+                z = curve_fit(self.fitFuncLin,observed,expected)
             name = self.inputFile.split(".")[0]
             name = os.path.join(self.batchFolder,name)
             #############
@@ -475,21 +481,35 @@ class App():
             maxX = max(expected)+0.1*max(expected)
             newX = numpy.linspace(minX,maxX,2500*(maxX-minX))
             linY = newX
-            yNew = self.fitFunc(newX,*z[0])
-            minY = self.fitFunc(minX,*z[0])
-            maxY = self.fitFunc(maxX,*z[0])
+            if func == "PowerLaw":
+                yNew = self.fitFunc(newX,*z[0])
+                minY = self.fitFunc(minX,*z[0])
+                maxY = self.fitFunc(maxX,*z[0])
+            elif func == "Linear":
+                yNew = self.fitFuncLin(newX,*z[0])
+                minY = self.fitFuncLin(minX,*z[0])
+                maxY = self.fitFuncLin(maxX,*z[0])
             fig =  plt.figure(figsize=(8,6))
             ax = fig.add_subplot(111)
             plt.scatter(expected,observed,c='b',label='Raw',alpha=0.5)
             observedCalibrated = []
             for index, j in enumerate(observed):
-                observedCalibrated.append(self.fitFunc(j,*z[0]))
+                if func == "PowerLaw":
+                    observedCalibrated.append(self.fitFunc(j,*z[0]))
+                elif func == "Linear":  
+                    observedCalibrated.append(self.fitFuncLin(j,*z[0])) 
             plt.scatter(expected,observedCalibrated,c='r',label='Calibrated',marker='s',alpha=0.5)
             numbers = ["%.2f" % number for number in z[0]]
-            if float(numbers[2]) > 0.0:
-                plt.plot(newX,yNew,label='Fit, Function: '+str(numbers[0])+"x"+"$^{"+str(numbers[1])+"}$+"+str(numbers[2]),c='b')
-            else:
-                plt.plot(newX,yNew,label='Fit, Function: '+str(numbers[0])+"x"+"$^{"+str(numbers[1])+"}$"+str(numbers[2]),c='b')
+            if func == "PowerLaw":
+                if float(numbers[2]) > 0.0:
+                    plt.plot(newX,yNew,label="Fit, Function: "+str(numbers[0])+"x"+"$^{"+str(numbers[1])+"}$+"+str(numbers[2]),c='b')
+                else:
+                    plt.plot(newX,yNew,label="Fit, Function: "+str(numbers[0])+"x"+"$^{"+str(numbers[1])+"}$"+str(numbers[2]),c='b')
+            elif func == "Linear":
+                if float(numbers[1]) > 0.0:
+                    plt.plot(newX,yNew, label="Fit, Function: "+str(numbers[0])+"x+"+str(numbers[1]),c='b')
+                else:
+                    plt.plot(newX,yNew, label="Fit, Function: "+str(numbers[0])+"x"+str(numbers[1]),c='b')
             plt.plot(newX,linY,label='Target',c='r',linestyle='--')
             plt.legend(loc='best')
             plt.xlabel("Expected rt (s.)")
@@ -732,17 +752,29 @@ class App():
                 # Make sure that enough features are used for alignment
                 if len(timePairs) >= ALIGNMENT_MIN_PEAK:
                     warnUser = False
-                    alignFunction = self.calcQuadratic(timePairs)
-                    #except TypeError:
+                    # Attempt advanced alignment (PowerLaw)
+                    alignFunction = self.calcQuadratic(timePairs,"PowerLaw")
+                    # Fall back to basic alignment (Linear)
                     if alignFunction == None:
+                        print "Advanced alignment failed on file: "+str(file)+", switching to basic alignment\n"
                         if self.log == True:
                             with open('LaCyTools.log', 'a') as flog:
-                                flog.write(str(datetime.now())+"\tFile: "+str(file)+" could not be aligned. Curve_fit exceeded maximum number of iterations\n")
-                        outFile = os.path.split(file)[-1]
-                        outFile = "unaligned_"+outFile
-                        outFile = os.path.join(self.batchFolder,outFile)
-                        open(outFile,'w').close()
-                        continue
+                                flog.write(str(datetime.now())+ "Advanced alignment failed on file: "+str(file)+", switching to basic alignment\n")
+                        alignFunction = self.calcQuadratic(timePairs,"Linear")
+                        if alignFunction == None:
+                            if self.log == True:
+                                with open('LaCyTools.log', 'a') as flog:
+                                    flog.write(str(datetime.now())+"\tFile: "+str(file)+" could not be aligned. Both advanced and basic alignment fits failed\n")
+                            outFile = os.path.split(file)[-1]
+                            outFile = "unaligned_"+outFile
+                            outFile = os.path.join(self.batchFolder,outFile)
+                            open(outFile,'w').close()
+                            continue
+                    # Bind correct fit function to fit (PowerLaw or Linear)
+                    if len(alignFunction[0]) == 3:
+                        fit = self.fitFunc
+                    elif len(alignFunction[0]) == 2:
+                        fit = self.fitFuncLin                               
                     # Create alignment output file
                     alignmentOutput = self.inputFile.split(".")[0]
                     alignmentOutput = alignmentOutput + ".alignment"
@@ -750,9 +782,9 @@ class App():
                         lsq = 0
                         falign.write("Peak\tExpected RT\tOriginal RT\tAligned RT\n")
                         for index,timePair in enumerate(timePairs):
-                            falign.write(str(features[index][0])+"\t"+str(timePair[0])+"\t"+str(timePair[1])+"\t"+str(self.fitFunc(float(timePair[1]),*alignFunction[0]))+"\n")
-                            lsq += float(features[index][0]) - self.fitFunc(float(timePair[1]),*alignFunction[0])
-                    self.transform_mzXML(file,alignFunction[0])
+                            falign.write(str(features[index][0])+"\t"+str(timePair[0])+"\t"+str(timePair[1])+"\t"+str(fit(float(timePair[1]),*alignFunction[0]))+"\n")
+                            lsq += float(features[index][0]) - fit(float(timePair[1]),*alignFunction[0])
+                    self.transform_mzXML(file,fit,alignFunction[0])
                 else:
                     print "File not aligned due to lack of features"
                     outFile = os.path.split(file)[-1]
@@ -1064,13 +1096,17 @@ class App():
                 index = a
             return a
 
-    def transform_mzXML(self,file,polynomial):
+    def transform_mzXML(self,file,fit,alignFunction):
         """Reads the mzXML file and transforms the reported retention
         time by the specified polynomial function.
         """
         with open(file,'r') as fr:
             outFile = os.path.split(file)[-1]
-            outFile = "aligned_"+outFile
+            # Use * to indicate files that were aligned using the basic alignment
+            if len(alignFunction) == 3:
+                outFile = "aligned_"+outFile
+            elif len(alignFunction) == 2:
+                outFile = "alignedLin_"+outFile
             outFile = os.path.join(self.batchFolder,outFile)
             print "Writing output file: "+outFile
             with open(outFile,'w') as fw:
@@ -1085,10 +1121,10 @@ class App():
                         if time[0] == 'P':
                             time = time[2:-1]
                         # The below line is only to make it work with mzMine
-                        if  self.fitFunc(float(time),*polynomial) < 0:
+                        if  fit(float(time),*alignFunction) < 0:
                             newTime = str(0)
                         else:
-                            newTime = str(self.fitFunc(float(time),*polynomial))
+                            newTime = str(fit(float(time),*alignFunction))
                         line = line.replace(time,newTime)
                         fw.write(line)
                     else:
@@ -2142,10 +2178,9 @@ class App():
                     fw.write("\t"+str(math.sqrt(RMS))+"\n")
                 fw.write("\n")
 
-            ###############################
-            # Analyte Mass Error (in PPM) #
-            ###############################
-            print self.ppmQC.get()
+            ##################################
+            # Analyte Mass Accuracy (in PPM) #
+            ##################################
             if self.ppmQC.get() == 1:
                 minCharge = sys.maxint
                 maxCharge = 0
@@ -2164,7 +2199,7 @@ class App():
                 for i in xrange(minCharge,maxCharge+1):
                     # This is a time intensive function
                     # Header
-                    fw.write("PPM Error ("+str(i)+"+)")
+                    fw.write("Mass Accuracy [ppm] ("+str(i)+"+)")
                     for j in compositions:
                         fw.write("\t"+str(j[0]))
                     fw.write("\n")
@@ -2242,7 +2277,7 @@ class App():
                 for i in xrange(minCharge,maxCharge+1):
                     # This is a time intensive function
                     # Header
-                    fw.write("QC ("+str(i)+"+)")
+                    fw.write("IPQ ("+str(i)+"+)")
                     for j in compositions:
                         fw.write("\t"+str(j[0]))
                     fw.write("\n")
@@ -2504,11 +2539,11 @@ class App():
         self.bckSub.grid(row = 3, column = 1, sticky = W)
         self.align = Checkbutton(top, text="Alignment Residuals", variable=master.alignmentQC, onvalue=1, offvalue=0)
         self.align.grid(row = 6, column=0, sticky=W)
-        self.qc = Checkbutton(top, text = "QC", variable = master.qualityControl, onvalue = 1, offvalue = 0)
+        self.qc = Checkbutton(top, text = "Isotopomeric Pattern Quality", variable = master.qualityControl, onvalue = 1, offvalue = 0)
         self.qc.grid(row = 7, column = 0, sticky = W)
-        self.ppm = Checkbutton(top, text = "PPM Error", variable = master.ppmQC, onvalue = 1, offvalue = 0)
+        self.ppm = Checkbutton(top, text = "Mass Accuracy [ppm]", variable = master.ppmQC, onvalue = 1, offvalue = 0)
         self.ppm.grid(row = 8, column = 0, sticky = W)
-        self.snratio = Checkbutton(top, text = "Signal to Noise", variable = master.SN, onvalue = 1, offvalue = 0)
+        self.snratio = Checkbutton(top, text = "Signal-to-Noise Ratio", variable = master.SN, onvalue = 1, offvalue = 0)
         self.snratio.grid(row = 9, column = 0, sticky = W)
         self.button = Button(top,text='Ok',command = lambda: close(self))
         self.button.grid(row = 10, column = 0, columnspan = 2)
