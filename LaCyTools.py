@@ -29,9 +29,10 @@ tables.parameters.MAX_NUMEXPR_THREADS = None
 tables.parameters.MAX_BLOSC_THREADS = None
 
 # File Parameters
-EXTENSION = ".mzXML"
-EXTRACTION = "aligned"
-OUTPUT = "Summary.txt"
+EXTENSION = ".mzXML"            # File types that will be used by MassyTools
+EXTRACTION = "aligned"          # Pre-fix required for files to be extracted
+OUTPUT = "Summary.txt"          # Name of the output file
+SETTINGS_FILE = "Settings.txt"  # Name of the settings file
 
 # Alignment Parameters
 ALIGNMENT_TIME_WINDOW = 10      # The +/- time window that the program is allowed to look for the feature for alignment (EIC time axis)
@@ -397,6 +398,10 @@ class App():
         self.batch = False
         self.fig = matplotlib.figure.Figure(figsize=(8, 6))
 
+        # Attempt to retrieve previously saved settings from settingsfile
+        if os.path.isfile('./'+str(SETTINGS_FILE)):
+            self.getSettings()
+
         # The LacyTools Logo (created by ....)
         if os.path.isfile('./UI.png'):
             image = plt.imread('./UI.png')
@@ -429,9 +434,210 @@ class App():
         menu.add_command(label="Batch Process", command = lambda: self.batchPopup(self))
 
         menu.add_command(label="Data Storage", command = lambda: self.dataPopup(self))
+        
+        menu.add_command(label="Settings", command = lambda: self.settingsPopup(self))
 
+    def settingsPopup(self,master):
+        """ This function creates a window in which the user can change
+        all the parameters that are for normal use. Certain advanced
+        settings such as the extraction type and noise determination
+        method remain hidden from the user through this window.
+        """
+        def close(self):
+            """ This function closes the settings popup and applies
+            all the entered values to the parameters.
+            """
+            global ALIGNMENT_TIME_WINDOW
+            global ALIGNMENT_MASS_WINDOW
+            global ALIGNMENT_S_N_CUTOFF
+            global ALIGNMENT_MIN_PEAK
+            global CALIB_MASS_WINDOW
+            global CALIB_S_N_CUTOFF
+            global CALIB_MIN_PEAK
+            global SUM_SPECTRUM_RESOLUTION
+            global MASS_WINDOW
+            global TIME_WINDOW
+            global MIN_CHARGE
+            global MAX_CHARGE
+            global MIN_TOTAL
+            global BACKGROUND_WINDOW
+            ALIGNMENT_TIME_WINDOW = float(self.alignTimeWindow.get())
+            ALIGNMENT_MASS_WINDOW = float(self.alignMassWindow.get())
+            ALIGNMENT_S_N_CUTOFF = int(self.alignSn.get())
+            ALIGNMENT_MIN_PEAK = int(self.alignMin.get())
+            CALIB_MASS_WINDOW = float(self.calibMassWindow.get())
+            CALIB_S_N_CUTOFF = int(self.calibSn.get())
+            CALIB_MIN_PEAK = int(self.calibMin.get())
+            SUM_SPECTRUM_RESOLUTION = int(self.sumSpec.get())
+            MASS_WINDOW = float(self.extracMassWindow.get())
+            TIME_WINDOW = float(self.extracTimeWindow.get())
+            MIN_CHARGE = int(self.extracMinCharge.get())
+            MAX_CHARGE = int(self.extracMaxCharge.get())
+            MIN_TOTAL = float(self.extracMinTotal.get())
+            BACKGROUND_WINDOW = int(self.extracBack.get())
+            master.measurementWindow = 0
+            top.destroy()
+            
+        def save(self):
+            """ This function saves all changed settings to the 
+            settings file.
+            """
+            with open(SETTINGS_FILE,'w') as fw:
+                fw.write("ALIGNMENT_TIME_WINDOW\t"+str(float(self.alignTimeWindow.get()))+"\n")
+                fw.write("ALIGNMENT_MASS_WINDOW\t"+str(float(self.alignMassWindow.get()))+"\n")
+                fw.write("ALIGNMENT_S_N_CUTOFF\t"+str(int(self.alignSn.get()))+"\n")
+                fw.write("ALIGNMENT_MIN_PEAK\t"+str(int(self.alignMin.get()))+"\n")
+                fw.write("CALIB_MASS_WINDOW\t"+str(float(self.calibMassWindow.get()))+"\n")
+                fw.write("CALIB_S_N_CUTOFF\t"+str(int(self.calibSn.get()))+"\n")
+                fw.write("CALIB_MIN_PEAK\t"+str(int(self.calibMin.get()))+"\n")
+                fw.write("SUM_SPECTRUM_RESOLUTION\t"+str(int(self.sumSpec.get()))+"\n")
+                fw.write("MASS_WINDOW\t"+str(float(self.extracMassWindow.get()))+"\n")
+                fw.write("TIME_WINDOW\t"+str(float(self.extracTimeWindow.get()))+"\n")
+                fw.write("MIN_CHARGE\t"+str(int(self.extracMinCharge.get()))+"\n")
+                fw.write("MAX_CHARGE\t"+str(int(self.extracMaxCharge.get()))+"\n")
+                fw.write("MIN_TOTAL\t"+str(float(self.extracMinTotal.get()))+"\n")
+                fw.write("BACKGROUND_TOTAL\t"+str(int(self.extracBack.get()))+"\n")
+                
+        self.extractVar = StringVar()
+        self.extractVar.set(EXTRACTION_TYPE)
+        
+        master.measurementWindow = 1
+        top = self.top = Toplevel()
+        top.protocol( "WM_DELETE_WINDOW", lambda: close(self))
+        self.alignmentLabel = Label(top, text="Alignment parameters")
+        self.alignmentLabel.grid(row=0, columnspan=2, sticky=W)
+        self.alignTimeWindowLabel = Label(top, text="Alignment time window")
+        self.alignTimeWindowLabel.grid(row=1, column=0, sticky=W)
+        self.alignTimeWindow = Entry(top)
+        self.alignTimeWindow.insert(0, ALIGNMENT_TIME_WINDOW)
+        self.alignTimeWindow.grid(row=1, column=1, sticky=W)
+        self.alignMassWindowLabel = Label(top, text="Alignment m/z window")
+        self.alignMassWindowLabel.grid(row=2, column=0, sticky=W)
+        self.alignMassWindow = Entry(top)
+        self.alignMassWindow.insert(0, ALIGNMENT_MASS_WINDOW)
+        self.alignMassWindow.grid(row=2, column=1, sticky=W)
+        self.alignSnLabel = Label(top, text="Minimal S/N for alignment")
+        self.alignSnLabel.grid(row=3, column=0, sticky=W)
+        self.alignSn = Entry(top)
+        self.alignSn.insert(0, ALIGNMENT_S_N_CUTOFF)
+        self.alignSn.grid(row=3, column=1, sticky=W)
+        self.alignMinLabel = Label(top, text="Minimal features for alignment")
+        self.alignMinLabel.grid(row=4, column=0, sticky=W)
+        self.alignMin = Entry(top)
+        self.alignMin.insert(0, ALIGNMENT_MIN_PEAK)
+        self.alignMin.grid(row=4, column=1, sticky=W)
+        self.calibrationLabel = Label(top, text="Calibration parameters")
+        self.calibrationLabel.grid(row=5, columnspan=2, sticky=W)
+        self.calibMassWindowLabel = Label(top, text="Calibration mass window")
+        self.calibMassWindowLabel.grid(row=6, column=0, sticky=W)
+        self.calibMassWindow = Entry(top)
+        self.calibMassWindow.insert(0, CALIB_MASS_WINDOW)
+        self.calibMassWindow.grid(row=6, column=1, sticky=W)
+        self.calibSnLabel = Label(top, text="Minimal S/N for calibration")
+        self.calibSnLabel.grid(row=7, column=0, sticky=W)
+        self.calibSn = Entry(top)
+        self.calibSn.insert(0, CALIB_S_N_CUTOFF)
+        self.calibSn.grid(row=7, column=1, sticky=W)
+        self.calibMinLabel = Label(top, text="Minimal number of calibrants")
+        self.calibMinLabel.grid(row=8, column=0, sticky=W)
+        self.calibMin = Entry(top)
+        self.calibMin.insert(0, CALIB_MIN_PEAK)
+        self.calibMin.grid(row=8, column=1, sticky=W)
+        self.extractionLabel = Label(top, text="Extraction parameters")
+        self.extractionLabel.grid(row=9, columnspan=2, sticky=W)
+        self.sumSpecLabel = Label(top, text="Data points per 1 m/z")
+        self.sumSpecLabel.grid(row=10, column=0, sticky=W)
+        self.sumSpec = Entry(top)
+        self.sumSpec.insert(0, SUM_SPECTRUM_RESOLUTION)
+        self.sumSpec.grid(row=10, column=1, sticky=W)
+        self.extracMassWindowLabel = Label(top, text="Extraction m/z window")
+        self.extracMassWindowLabel.grid(row=12, column=0, sticky=W)
+        self.extracMassWindow = Entry(top)
+        self.extracMassWindow.insert(0, MASS_WINDOW)
+        self.extracMassWindow.grid(row=12, column=1, sticky=W)
+        self.extracTimeWindowLabel = Label(top, text="Extraction time window")
+        self.extracTimeWindowLabel.grid(row=13, column=0, sticky=W)
+        self.extracTimeWindow = Entry(top)
+        self.extracTimeWindow.insert(0, TIME_WINDOW)
+        self.extracTimeWindow.grid(row=13, column=1, sticky=W)
+        self.extracMinChargeLabel = Label(top, text="Minimum charge state")
+        self.extracMinChargeLabel.grid(row=14, column=0, sticky=W)
+        self.extracMinCharge = Entry(top)
+        self.extracMinCharge.insert(0, MIN_CHARGE)
+        self.extracMinCharge.grid(row=14, column=1, sticky=W)
+        self.extracMaxChargeLabel = Label(top, text="Maximum charge state")
+        self.extracMaxChargeLabel.grid(row=15, column=0, sticky=W)
+        self.extracMaxCharge = Entry(top)
+        self.extracMaxCharge.insert(0, MAX_CHARGE)
+        self.extracMaxCharge.grid(row=15, column=1, sticky=W)
+        self.extracMinTotalLabel = Label(top, text="Minimum isotopic fraction")
+        self.extracMinTotalLabel.grid(row=16, column=0, sticky=W)
+        self.extracMinTotal = Entry(top)
+        self.extracMinTotal.insert(0, MIN_TOTAL)
+        self.extracMinTotal.grid(row=16, column=1, sticky=W)
+        self.extracBackLabel = Label(top, text="Background detection window")
+        self.extracBackLabel.grid(row=17, column=0, sticky=W)
+        self.extracBack = Entry(top)
+        self.extracBack.insert(0, BACKGROUND_WINDOW)
+        self.extracBack.grid(row=17, column=1, sticky=W)
+        self.ok = Button(top,text = 'Ok', command = lambda: close(self))
+        self.ok.grid(row = 18, column = 0, sticky = W)
+        self.save = Button(top, text = 'Save', command = lambda: save(self))
+        self.save.grid(row = 18, column = 1, sticky = E)
+
+    def getSettings(self):
+        """ This function reads the settings file as specified in the
+        program, applying them to the program.
+        """
+        with open(SETTINGS_FILE,'r') as fr:
+            for line in fr:
+                line = line.rstrip('\n')
+                chunks = line.split()
+                if chunks[0] == "ALIGNMENT_TIME_WINDOW":
+                    global ALIGNMENT_TIME_WINDOW
+                    ALIGNMENT_TIME_WINDOW = float(chunks[1])
+                if chunks[0] == "ALIGNMENT_MASS_WINDOW":
+                    global ALIGNMENT_MASS_WINDOW
+                    ALIGNMENT_MASS_WINDOW = float(chunks[1])
+                if chunks[0] == "ALIGNMENT_S_N_CUTOFF":
+                    global ALIGNMENT_S_N_CUTOFF
+                    ALIGNMENT_S_N_CUTOFF = int(chunks[1])
+                if chunks[0] == "ALIGNMENT_MIN_PEAK":
+                    global ALIGNMENT_MIN_PEAK
+                    ALIGNMENT_MIN_PEAK = int(chunks[1])
+                if chunks[0] == "CALIB_MASS_WINDOW":
+                    global CALIB_MASS_WINDOW
+                    CALIB_MASS_WINDOW = float(chunks[1])
+                if chunks[0] == "CALIB_S_N_CUTOFF":
+                    global CALIB_S_N_CUTOFF
+                    CALIB_S_N_CUTOFF = int(chunks[1])
+                if chunks[0] == "CALIB_MIN_PEAK":
+                    global CALIB_MIN_PEAK
+                    CALIB_MIN_PEAK = int(chunks[1])
+                if chunks[0] == "SUM_SPECTRUM_RESOLUTION":
+                    global SUM_SPECTRUM_RESOLUTION
+                    SUM_SPECTRUM_RESOLUTION = int(chunks[1])
+                if chunks[0] == "MASS_WINDOW":
+                    global MASS_WINDOW
+                    MASS_WINDOW = float(chunks[1])
+                if chunks[0] == "TIME_WINDOW":
+                    global TIME_WINDOW
+                    TIME_WINDOW = float(chunks[1])
+                if chunks[0] == "MIN_CHARGE":
+                    global MIN_CHARGE
+                    MIN_CHARGE = int(chunks[1])
+                if chunks[0] == "MAX_CHARGE":
+                    global MAX_CHARGE
+                    MAX_CHARGE = int(chunks[1])
+                if chunks[0] == "MIN_TOTAL":
+                    global MIN_TOTAL
+                    MIN_TOTAL = float(chunks[1])
+                if chunks[0] == "BACKGROUND_TOTAL":
+                    global BACKGROUND_TOTAL
+                    BACKGROUND_TOTAL = int(chunks[1])
+                        
     def feature_reader(self,file):
-        """ reads the contents of the 'features.txt' file and stores
+        """ This reads the contents of the 'features.txt' file and stores
         the relevant values in a list.
         """
         features = []
@@ -2533,13 +2739,13 @@ class App():
         self.back.grid(row = 4, column = 0, sticky = W)
         self.analNoise = Checkbutton(top, text = u"Analyte Noise\u00B9", variable = master.analyteNoise, onvalue = 1, offvalue = 0)
         self.analNoise.grid(row = 5, column = 0, sticky = W)
-        self.chargeState = Checkbutton(top, text = u"\u00B9Areas per Charge State", variable = master.analytePerCharge, onvalue = 1, offvalue = 0)
+        self.chargeState = Checkbutton(top, text = u"\u00B9Intensities per Charge State", variable = master.analytePerCharge, onvalue = 1, offvalue = 0)
         self.chargeState.grid(row = 2, column = 1, sticky = W)
-        self.bckSub = Checkbutton(top, text = u"\u00B2Background subtracted Areas", variable = master.analyteBckSub, onvalue = 1, offvalue = 0)
+        self.bckSub = Checkbutton(top, text = u"\u00B2Background subtracted Intensities", variable = master.analyteBckSub, onvalue = 1, offvalue = 0)
         self.bckSub.grid(row = 3, column = 1, sticky = W)
         self.align = Checkbutton(top, text="Alignment Residuals", variable=master.alignmentQC, onvalue=1, offvalue=0)
         self.align.grid(row = 6, column=0, sticky=W)
-        self.qc = Checkbutton(top, text = "Isotopomeric Pattern Quality", variable = master.qualityControl, onvalue = 1, offvalue = 0)
+        self.qc = Checkbutton(top, text = "Isotopic Pattern Quality", variable = master.qualityControl, onvalue = 1, offvalue = 0)
         self.qc.grid(row = 7, column = 0, sticky = W)
         self.ppm = Checkbutton(top, text = "Mass Accuracy [ppm]", variable = master.ppmQC, onvalue = 1, offvalue = 0)
         self.ppm.grid(row = 8, column = 0, sticky = W)
