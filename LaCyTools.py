@@ -5,6 +5,7 @@ from scipy.interpolate import interp1d
 import scipy.optimize
 from scipy.optimize import curve_fit
 from Tkinter import *
+from PIL import Image, ImageTk
 import base64
 import collections
 import glob
@@ -363,6 +364,55 @@ class Isotope():
         self.backgroundPoint = None
         self.noise = None
 
+################################################################################################
+# Tooltip code - Taken from http://www.voidspace.org.uk/python/weblog/arch_d7_2006_07_01.shtml #
+################################################################################################
+class ToolTip(object):
+    
+    def __init__(self, widget):
+        self.widget = widget
+        self.tipwindow = None
+        self.id = None
+        self.x = self.y = 0
+
+    def showtip(self, text):
+        "Display text in tooltip window"
+        self.text = text
+        if self.tipwindow or not self.text:
+            return
+        x, y, cx, cy = self.widget.bbox("insert")
+        x = x + self.widget.winfo_rootx() + 27
+        y = y + cy + self.widget.winfo_rooty() +27
+        self.tipwindow = tw = Toplevel(self.widget)
+        tw.wm_overrideredirect(1)
+        tw.wm_geometry("+%d+%d" % (x, y))
+        try:
+            # For Mac OS
+            tw.tk.call("::tk::unsupported::MacWindowStyle",
+                       "style", tw._w,
+                       "help", "noActivates")
+        except TclError:
+            pass
+        label = Label(tw, text=self.text, justify=LEFT,
+                      background="#ffffe0", relief=SOLID, borderwidth=1,
+                      wraplength=500, font=("tahoma", "8", "normal"))
+        label.pack(ipadx=1)
+
+    def hidetip(self):
+        tw = self.tipwindow
+        self.tipwindow = None
+        if tw:
+            tw.destroy()
+
+def createToolTip(widget, text):
+    toolTip = ToolTip(widget)
+    def enter(event):
+        toolTip.showtip(text)
+    def leave(event):
+        toolTip.hidetip()
+    widget.bind('<Enter>', enter)
+    widget.bind('<Leave>', leave)
+    
 ###############################
 # Start of actual application #
 ###############################
@@ -402,12 +452,13 @@ class App():
         if os.path.isfile('./'+str(SETTINGS_FILE)):
             self.getSettings()
 
-        # The LacyTools Logo (created by ....)
-        if os.path.isfile('./UI.png'):
-            image = plt.imread('./UI.png')
-            plt.axis('off')
-            plt.tight_layout()
-            im = plt.imshow(image)
+        # The LacyTools Logo (Placeholder figure)
+        if os.path.isfile('./UI/UI.png'):
+            background_image = self.fig.add_subplot(111)
+            image = matplotlib.image.imread('./ui/UI.png')
+            background_image.axis('off')
+            self.fig.set_tight_layout(True)
+            background_image.imshow(image)
         # The Canvas
         self.canvas = FigureCanvasTkAgg(self.fig, master = master)
         self.toolbar = NavigationToolbar2TkAgg(self.canvas, root)
@@ -443,6 +494,7 @@ class App():
         settings such as the extraction type and noise determination
         method remain hidden from the user through this window.
         """
+
         def close(self):
             """ This function closes the settings popup and applies
             all the entered values to the parameters.
@@ -481,7 +533,7 @@ class App():
         def save(self):
             """ This function saves all changed settings to the 
             settings file.
-            """
+            """            
             with open(SETTINGS_FILE,'w') as fw:
                 fw.write("ALIGNMENT_TIME_WINDOW\t"+str(float(self.alignTimeWindow.get()))+"\n")
                 fw.write("ALIGNMENT_MASS_WINDOW\t"+str(float(self.alignMassWindow.get()))+"\n")
@@ -497,9 +549,6 @@ class App():
                 fw.write("MAX_CHARGE\t"+str(int(self.extracMaxCharge.get()))+"\n")
                 fw.write("MIN_TOTAL\t"+str(float(self.extracMinTotal.get()))+"\n")
                 fw.write("BACKGROUND_TOTAL\t"+str(int(self.extracBack.get()))+"\n")
-                
-        self.extractVar = StringVar()
-        self.extractVar.set(EXTRACTION_TYPE)
         
         master.measurementWindow = 1
         top = self.top = Toplevel()
@@ -584,6 +633,21 @@ class App():
         self.ok.grid(row = 18, column = 0, sticky = W)
         self.save = Button(top, text = 'Save', command = lambda: save(self))
         self.save.grid(row = 18, column = 1, sticky = E)
+        # Tooltips
+        createToolTip(self.alignTimeWindowLabel,"The time window in seconds around the specified time of an alignment feature that LaCyTools is allowed to look for the maximum intensity of each feature.")
+        createToolTip(self.alignMassWindowLabel,"The m/z window in Thompson around the specified exact m/z of an alignment feature, that LaCyTools will use to find the maximum of each feature.")
+        createToolTip(self.alignSnLabel,"The minimum S/N of an alignment feature to be included in the alignment.")
+        createToolTip(self.alignMinLabel,"The minimum number of features that have a S/N higher than the minimum S/N for alignment to occur.")
+        createToolTip(self.calibMassWindowLabel,"The mass window in Dalton around the specified exact m/z of a calibrant, that LaCyTools uses to determine the uncalibrated accurate mass.")
+        createToolTip(self.calibSnLabel,"The minimum S/N of a calibrant to be included in the calibration.")
+        createToolTip(self.calibMinLabel,"The minimum number of calibrants that have a S/N higher than the minimum S/N for calibration to occur.")
+        createToolTip(self.sumSpecLabel,"The number of bins per m/z that will be used in the sum spectrum. A value of 100 means that each data point in the sum spectrum is spaced at 0.01 m/z.")
+        createToolTip(self.extracMassWindowLabel,"The m/z window in Thompson around the specified exact m/z of a feature that LaCyTools will use for quantitation. For example, a value of 0.1 results in LaCyTools quantifying 999.9 to 1000.1 for a feature with an m/z value of 1000.")
+        createToolTip(self.extracTimeWindowLabel,"The rt window in seconds around the specified elution time of each cluster that contains features for quantitation. For example, a value of 10 will result in LaCyTools creating a sum spectrum from 90 s. to 110 s. for a cluster eluting at 100s.")
+        createToolTip(self.extracMinChargeLabel,"The minimum charge state that LaCyTools will attempt to use in calibration and quantitation for all features listed in the analyte reference file.")
+        createToolTip(self.extracMaxChargeLabel,"The maximum charge state that LaCyTools will attempt to use in calibration and quantitation for all features listed in the analyte reference file.")
+        createToolTip(self.extracMinTotalLabel,"The minimum fraction of the theoretical isotopic pattern that LaCyTools will use for quantitation. For example, a value of 0.95 means that LaCyTools will quantify isotopes until the sum of the quantified isotopes exceeds 0.95 of the total theoretcal isotopic pattern.")
+        createToolTip(self.extracBackLabel,"The mass window in Dalton that LaCyTools is allowed to look for the local background and noise for each analyte. For example, a value of 10 means that LaCyTools will look from 990 m/z to 1010 m/z for an analyte with an m/z of 1000.")
 
     def getSettings(self):
         """ This function reads the settings file as specified in the
@@ -1006,13 +1070,13 @@ class App():
             self.refParser(ref)
             times = []
             for i in ref:
-                times.append(i[4])
+                times.append((i[4],i[5]))
             chunks = collections.OrderedDict()
             for i in times:
                 if i not in chunks.keys():
-                    chunks['%s' % i] = []
+                    chunks['%s' % '-'.join(i)] = []
             for i in ref:
-                chunks['%s' % i[4]].append(i)
+                chunks['%s' % '-'.join((i[4],i[5]))].append(i)
             if os.path.isfile(os.path.join(self.batchFolder,"pytables.h5")) == False:
                 filenames = glob.glob(os.path.join(str(self.batchFolder),EXTRACTION+"*"+EXTENSION))
                 filenames2idx = dict([(filename, idx) for idx, filename in enumerate(filenames)])
@@ -1025,11 +1089,13 @@ class App():
                 self.readData(array, readTimes)
                 for index,i in enumerate(chunks.keys()):
                     spectrum = self.sumSpectrum(i,array)
+                    # Dirty hack to now get rid of the time window again
+                    rt = tuple(i.split('-'))[0]
                     calibrants = []
                     # Calibrate the sum spectrum
                     if self.calFile.get() == 1:
                         for j in ref:
-                            if j[6] == "True" and int(round(float(j[4]))) == int(round(float(i))):
+                            if j[6] == "True" and int(round(float(j[4]))) == int(round(float(rt))):
                                 charge = j[0].split("_")[1]
                                 calibrants.append((float(j[1]),int(charge)))
                         measuredMaxima = self.getLocalMaxima(calibrants,spectrum)
@@ -1235,9 +1301,10 @@ class App():
         """ This function creates a summed spectrum and returns the
         resulting spectrum back to the calling function.
         """
+        time = tuple(time.split('-'))
         # This is returning None's now
-        lowTime = self.binarySearch(array,float(time)-TIME_WINDOW,len(array)-1,'left')
-        highTime = self.binarySearch(array,float(time)+TIME_WINDOW,len(array)-1,'right')
+        lowTime = self.binarySearch(array,float(time[0])-float(time[1]),len(array)-1,'left')
+        highTime = self.binarySearch(array,float(time[0])+float(time[1]),len(array)-1,'right')
         LOW_MZ = 25000.0
         HIGH_MZ = 0.0
         for i in array[lowTime:highTime]:
