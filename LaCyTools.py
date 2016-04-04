@@ -453,9 +453,9 @@ class App():
             self.getSettings()
 
         # The LacyTools Logo (Placeholder figure)
-        if os.path.isfile('./UI/UI.png'):
+        if os.path.isfile('./UI/LaCyTools.png'):
             background_image = self.fig.add_subplot(111)
-            image = matplotlib.image.imread('./ui/UI.png')
+            image = matplotlib.image.imread('./ui/LaCyTools.png')
             background_image.axis('off')
             self.fig.set_tight_layout(True)
             background_image.imshow(image)
@@ -553,7 +553,7 @@ class App():
         master.measurementWindow = 1
         top = self.top = Toplevel()
         top.protocol( "WM_DELETE_WINDOW", lambda: close(self))
-        self.alignmentLabel = Label(top, text="Alignment parameters")
+        self.alignmentLabel = Label(top, text="Alignment parameters", font="bold")
         self.alignmentLabel.grid(row=0, columnspan=2, sticky=W)
         self.alignTimeWindowLabel = Label(top, text="Alignment time window")
         self.alignTimeWindowLabel.grid(row=1, column=0, sticky=W)
@@ -575,7 +575,7 @@ class App():
         self.alignMin = Entry(top)
         self.alignMin.insert(0, ALIGNMENT_MIN_PEAK)
         self.alignMin.grid(row=4, column=1, sticky=W)
-        self.calibrationLabel = Label(top, text="Calibration parameters")
+        self.calibrationLabel = Label(top, text="Calibration parameters", font="bold")
         self.calibrationLabel.grid(row=5, columnspan=2, sticky=W)
         self.calibMassWindowLabel = Label(top, text="Calibration mass window")
         self.calibMassWindowLabel.grid(row=6, column=0, sticky=W)
@@ -592,7 +592,7 @@ class App():
         self.calibMin = Entry(top)
         self.calibMin.insert(0, CALIB_MIN_PEAK)
         self.calibMin.grid(row=8, column=1, sticky=W)
-        self.extractionLabel = Label(top, text="Extraction parameters")
+        self.extractionLabel = Label(top, text="Extraction parameters", font="bold")
         self.extractionLabel.grid(row=9, columnspan=2, sticky=W)
         self.sumSpecLabel = Label(top, text="Data points per 1 m/z")
         self.sumSpecLabel.grid(row=10, column=0, sticky=W)
