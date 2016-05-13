@@ -3299,7 +3299,7 @@ class App():
         wanted.append(current)
         return wanted
 
-    def matchAnalyteTimes(self, ref):
+     def matchAnalyteTimes(self, ref):
         """ This function takes a list of references and creates a list
         of time tuples, that is needed to read only relevant scans later
         in the program.
@@ -3339,7 +3339,7 @@ class App():
                 # Segments adjacent or overlapping: merge.
                 current_stop = max(current_stop, stop)
         yield current_start, current_stop
-         
+        
     def readData(self, array, readTimes):
         """ This function reads mzXML files and has the scans decoded on
         a per scan basis. The scans are identified by getting the line
