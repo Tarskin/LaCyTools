@@ -61,6 +61,7 @@ MAX_CHARGE = 3                  # The maximum charge state that the program will
 #MIN_CONTRIBUTION = 0.01        # Minimum contribution to isotopic distrubition to be included (NOT BEING USED ATM)
 MIN_TOTAL = 0.99                # Desired contribution of extracted isotopes of total isotopic pattern
 BACKGROUND_WINDOW = 10          # Total m/z window (+ and -) to search for background
+S_N_CUTOFF = 9                  # Minimum signal to noise value of an analyte to be included in the percentage QC
 
 # The maximum distance between distinct isotopic masses to be 'pooled'
 EPSILON = 0.5                   # DO NOT TOUCH THIS UNLESS YOU KNOW WTF YOU ARE DOING! Read below if you truly want to know the meaning:
@@ -441,12 +442,13 @@ class App():
         self.alignmentQC = IntVar()
         self.ppmQC = IntVar()
         self.qualityControl = IntVar()
+        self.spectraQualityControl = IntVar()
         self.SN = IntVar()
         self.log = True
         self.noise = "RMS"
         #self.noise = "MM"
         self.batch = False
-        self.fig = matplotlib.figure.Figure(figsize=(8, 6))
+        self.fig = matplotlib.figure.Figure(figsize=(12, 6))
 
         # Attempt to retrieve previously saved settings from settingsfile
         if os.path.isfile('./'+str(SETTINGS_FILE)):
@@ -513,6 +515,7 @@ class App():
             global MAX_CHARGE
             global MIN_TOTAL
             global BACKGROUND_WINDOW
+            global S_N_CUTOFF
             ALIGNMENT_TIME_WINDOW = float(self.alignTimeWindow.get())
             ALIGNMENT_MASS_WINDOW = float(self.alignMassWindow.get())
             ALIGNMENT_S_N_CUTOFF = int(self.alignSn.get())
@@ -527,6 +530,7 @@ class App():
             MAX_CHARGE = int(self.extracMaxCharge.get())
             MIN_TOTAL = float(self.extracMinTotal.get())
             BACKGROUND_WINDOW = int(self.extracBack.get())
+            S_N_CUTOFF = int(self.extracSnCutoff.get())
             master.measurementWindow = 0
             top.destroy()
             
@@ -549,6 +553,7 @@ class App():
                 fw.write("MAX_CHARGE\t"+str(int(self.extracMaxCharge.get()))+"\n")
                 fw.write("MIN_TOTAL\t"+str(float(self.extracMinTotal.get()))+"\n")
                 fw.write("BACKGROUND_TOTAL\t"+str(int(self.extracBack.get()))+"\n")
+                fw.write("S_N_CUTOFF\t"+str(int(self.extracSnCutoff.get()))+"\n")
         
         master.measurementWindow = 1
         top = self.top = Toplevel()
@@ -629,10 +634,15 @@ class App():
         self.extracBack = Entry(top)
         self.extracBack.insert(0, BACKGROUND_WINDOW)
         self.extracBack.grid(row=17, column=1, sticky=W)
+        self.extracSnCutoffLabel = Label(top, text="Spectra QC S/N Cutoff")
+        self.extracSnCutoffLabel.grid(row=18, column=0, sticky=W)
+        self.extracSnCutoff = Entry(top)
+        self.extracSnCutoff.insert(0, S_N_CUTOFF)
+        self.extracSnCutoff.grid(row=18,column=1, sticky=W)
         self.ok = Button(top,text = 'Ok', command = lambda: close(self))
-        self.ok.grid(row = 18, column = 0, sticky = W)
+        self.ok.grid(row = 19, column = 0, sticky = W)
         self.save = Button(top, text = 'Save', command = lambda: save(self))
-        self.save.grid(row = 18, column = 1, sticky = E)
+        self.save.grid(row = 19, column = 1, sticky = E)
         # Tooltips
         createToolTip(self.alignTimeWindowLabel,"The time window in seconds around the specified time of an alignment feature that LaCyTools is allowed to look for the maximum intensity of each feature.")
         createToolTip(self.alignMassWindowLabel,"The m/z window in Thompson around the specified exact m/z of an alignment feature, that LaCyTools will use to find the maximum of each feature.")
@@ -699,6 +709,9 @@ class App():
                 if chunks[0] == "BACKGROUND_TOTAL":
                     global BACKGROUND_TOTAL
                     BACKGROUND_TOTAL = int(chunks[1])
+                if chunks[0] == "S_N_CUTOFF":
+                    global S_N_CUTOFF
+                    S_N_CUTOFF = int(chunks[1])
                         
     def feature_reader(self,file):
         """ This reads the contents of the 'features.txt' file and stores
@@ -1063,7 +1076,7 @@ class App():
                     open(outFile,'w').close()
         # (CALIBRATION AND) EXTRACTION
         if self.refFile != "":
-            if self.analyteIntensity.get() == 0 and self.analyteRelIntensity.get() == 0 and self.analyteBackground.get() == 0 and self.analyteNoise.get() == 0 and self.alignmentQC.get() == 0 and self.qualityControl.get() == 0 and self.ppmQC.get() == 0 and self.SN.get() == 0:
+            if self.analyteIntensity.get() == 0 and self.analyteRelIntensity.get() == 0 and self.analyteBackground.get() == 0 and self.analyteNoise.get() == 0 and self.alignmentQC.get() == 0 and self.qualityControl.get() == 0 and self.ppmQC.get() == 0 and self.SN.get() == 0 and self.spectraQualityControl.get() == 0:
                 tkMessageBox.showinfo("Output Error","No outputs selected")
             self.initCompositionMasses(self.refFile)
             ref = []
@@ -2687,6 +2700,60 @@ class App():
                                 fw.write("\t")
                         fw.write("\n")
                     fw.write("\n")
+                    
+
+            #########################################
+            # Fraction of analytes above S/N cutoff #
+            #########################################
+            if self.spectraQualityControl.get() == 1:
+                ref = []
+                self.refParser(ref)
+                times = []
+                for i in ref:
+                    times.append((i[4],i[5]))
+                chunks = collections.OrderedDict()
+                for i in times:
+                    if i not in chunks.keys():
+                        chunks['%s' % '-'.join(i)] = []
+                for i in ref:
+                    chunks['%s' % '-'.join((i[4],i[5]))].append(i)
+                # Header
+                fw.write("Fraction of analytes above S/N Cutoff")
+                for index,i in enumerate(chunks.keys()):
+                    fw.write("\t"+str(i))
+                fw.write("\n")
+                #for index,i in enumerate(chunks.keys()):    
+                # Actual data
+                for j in total:
+                    fw.write(str(j[0]))
+                    for index,i in enumerate(chunks.keys()):  
+                        numberTotal = 0
+                        numberPass = 0
+                        for k in compositions:
+                            expInt = 0
+                            SN = 0
+                            for l in j[1]:
+                                try:
+                                    if l.composition == k[0] and float(l.time) == float(i.split("-")[0]) and float(l.timeWindow) == float(i.split("-")[1]):
+                                        numberTotal += 1
+                                        for m in l.isotopes:
+                                            if m.expInt > expInt: # and int(m.charge) == i:
+                                                try:
+                                                    SN = (m.obsMax - m.backgroundPoint) / m.noise
+                                                except ZeroDivisionError:
+                                                    pass
+                                                expInt = m.expInt
+                                        if SN > S_N_CUTOFF:
+                                            numberPass += 1
+                                except AttributeError:
+                                    print "Bleh"
+                                    pass
+                        if numberTotal > 0:
+                            fw.write("\t"+str(float(numberPass)/float(numberTotal)))
+                        else:
+                            fw.write("\t")
+                    fw.write("\n")
+                fw.write("\n")
 
     def writeResults(self,results,file):
         """ This function writes the resultes per file away to a raw
@@ -2773,6 +2840,7 @@ class App():
             master.qualityControl.set(1)
             master.ppmQC.set(1)
             master.SN.set(1)
+            master.spectraQualityControl.set(1)
         def select_none(self):
             master.analyteIntensity.set(0)
             master.analyteRelIntensity.set(0)
@@ -2784,6 +2852,7 @@ class App():
             master.qualityControl.set(0)
             master.ppmQC.set(0)
             master.SN.set(0)
+            master.spectraQualityControl.set(0)
         def close(self):
             master.outputWindow = 0
             top.destroy()
@@ -2818,8 +2887,10 @@ class App():
         self.ppm.grid(row = 8, column = 0, sticky = W)
         self.snratio = Checkbutton(top, text = "Signal-to-Noise Ratio", variable = master.SN, onvalue = 1, offvalue = 0)
         self.snratio.grid(row = 9, column = 0, sticky = W)
+        self.specQC = Checkbutton(top, text="Spectral QC", variable = master.spectraQualityControl, onvalue=1, offvalue=0)
+        self.specQC.grid(row = 10, column = 0, sticky = W)
         self.button = Button(top,text='Ok',command = lambda: close(self))
-        self.button.grid(row = 10, column = 0, columnspan = 2)
+        self.button.grid(row = 11, column = 0, columnspan = 2)
         top.lift()
 
     def binarySearch(self, array, target, high, direction):
@@ -3309,17 +3380,37 @@ class App():
         """
         wanted = []
         ref = sorted(ref,key=lambda x:x[4])
-        current = (float(ref[0][4])-float(ref[0][5]), float(ref[0][4])+float(ref[0][5]))
         for i in ref:
-            if float(i[4])-float(i[5]) >= current[0] and float(i[4])-float(i[5]) < current[1]:
-                if float(i[4])+float(i[5]) > current[1]:
-                    current = (current[0],float(i[4])+float(i[5]))
-            else:
-                wanted.append(current)
-                current= (float(i[4])-float(i[5]), float(i[4])+float(i[5]))
-        wanted.append(current)
-        return wanted
+            if (float(i[4])-float(i[5])) not in wanted:
+                wanted.append((float(i[4])-float(i[5]),float(i[4])+float(i[5])))
+        return list(self.merge_ranges(wanted))
 
+    def merge_ranges(self,ranges):
+        """ 
+        Merge overlapping and adjacent ranges and yield the merged ranges
+        in order. The argument must be an iterable of pairs (start, stop).
+
+        >>> list(merge_ranges([(5,7), (3,5), (-1,3)]))
+        [(-1, 7)]
+        >>> list(merge_ranges([(5,6), (3,4), (1,2)]))
+        [(1, 2), (3, 4), (5, 6)]
+        >>> list(merge_ranges([]))
+        []
+        
+        Source = http://stackoverflow.com/questions/24130745/convert-generator-object-to-list-for-debugging
+        """
+        ranges = iter(sorted(ranges))
+        current_start, current_stop = next(ranges)
+        for start, stop in ranges:
+            if start > current_stop:
+                # Gap between segments: output current segment and start a new one.
+                yield current_start, current_stop
+                current_start, current_stop = start, stop
+            else:
+                # Segments adjacent or overlapping: merge.
+                current_stop = max(current_stop, stop)
+        yield current_start, current_stop
+ 
     def readData(self, array, readTimes):
         """ This function reads mzXML files and has the scans decoded on
         a per scan basis. The scans are identified by getting the line
