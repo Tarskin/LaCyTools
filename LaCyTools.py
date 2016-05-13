@@ -3299,7 +3299,7 @@ class App():
         wanted.append(current)
         return wanted
 
-     def matchAnalyteTimes(self, ref):
+    def matchAnalyteTimes(self, ref):
         """ This function takes a list of references and creates a list
         of time tuples, that is needed to read only relevant scans later
         in the program.
@@ -3309,37 +3309,17 @@ class App():
         """
         wanted = []
         ref = sorted(ref,key=lambda x:x[4])
+        current = (float(ref[0][4])-float(ref[0][5]), float(ref[0][4])+float(ref[0][5]))
         for i in ref:
-            if (float(i[4])-float(i[5])) not in wanted:
-                wanted.append((float(i[4])-float(i[5]),float(i[4])+float(i[5])))
-        return list(self.merge_ranges(wanted))
-
-    def merge_ranges(self,ranges):
-        """ 
-        Merge overlapping and adjacent ranges and yield the merged ranges
-        in order. The argument must be an iterable of pairs (start, stop).
-
-        >>> list(merge_ranges([(5,7), (3,5), (-1,3)]))
-        [(-1, 7)]
-        >>> list(merge_ranges([(5,6), (3,4), (1,2)]))
-        [(1, 2), (3, 4), (5, 6)]
-        >>> list(merge_ranges([]))
-        []
-        
-        Source = http://stackoverflow.com/questions/24130745/convert-generator-object-to-list-for-debugging
-        """
-        ranges = iter(sorted(ranges))
-        current_start, current_stop = next(ranges)
-        for start, stop in ranges:
-            if start > current_stop:
-                # Gap between segments: output current segment and start a new one.
-                yield current_start, current_stop
-                current_start, current_stop = start, stop
+            if float(i[4])-float(i[5]) >= current[0] and float(i[4])-float(i[5]) < current[1]:
+                if float(i[4])+float(i[5]) > current[1]:
+                    current = (current[0],float(i[4])+float(i[5]))
             else:
-                # Segments adjacent or overlapping: merge.
-                current_stop = max(current_stop, stop)
-        yield current_start, current_stop
-        
+                wanted.append(current)
+                current= (float(i[4])-float(i[5]), float(i[4])+float(i[5]))
+        wanted.append(current)
+        return wanted
+
     def readData(self, array, readTimes):
         """ This function reads mzXML files and has the scans decoded on
         a per scan basis. The scans are identified by getting the line
