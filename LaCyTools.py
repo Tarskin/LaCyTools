@@ -291,19 +291,16 @@ BLOCKS = {  #######################
 					####################
 					# Immunoglobulin G #
 					####################
-					'IgGI':{'mass':1188.5047,	# Get exacter mass
 						'carbons':50,
 						'hydrogens':72,
 						'nitrogens':14,
 						'oxygens':20,
 						'sulfurs':0},
-					'IgGIV':{'mass':1172.5098,	# Get exacter mass
 						'carbons':50,
 						'hydrogens':72,
 						'nitrogens':14,
 						'oxygens':19,
 						'sulfurs':0},
-					'IgGII':{'mass':1156.5149,	# Get exacter mass
 						'carbons':50,
 						'hydrogens':72,
 						'nitrogens':14,
