@@ -291,16 +291,19 @@ BLOCKS = {  #######################
 					####################
 					# Immunoglobulin G #
 					####################
+					'IgGI':{'mass':1188.5047307674,
 						'carbons':50,
 						'hydrogens':72,
 						'nitrogens':14,
 						'oxygens':20,
 						'sulfurs':0},
+					'IgGIV':{'mass':1172.5098161478,
 						'carbons':50,
 						'hydrogens':72,
 						'nitrogens':14,
 						'oxygens':19,
 						'sulfurs':0},
+					'IgGII':{'mass':1156.5149015283,
 						'carbons':50,
 						'hydrogens':72,
 						'nitrogens':14,
@@ -2577,6 +2580,7 @@ class App():
                                                 sumInt += m.expInt
                                 break
                         fw.write("\t"+str(sumInt))
+                    totalExpInt = sumInt
                     fw.write("\n")
                     # List of monoisotopic masses
                     fw.write("Monoisotopic Mass")
@@ -2608,7 +2612,7 @@ class App():
                                             if int(m.charge) == i:
                                                 try:
                                                     maxIntensityBackCorrected = max(float(m.obsInt) - float(m.background),0)
-                                                    qc += abs((maxIntensityBackCorrected  / float(sumInt)) - m.expInt)
+                                                    qc += abs((maxIntensityBackCorrected  / float(sumInt)) - (m.expInt/totalExpInt))
                                                 except ZeroDivisionError:
                                                     pass
                                 except AttributeError:
