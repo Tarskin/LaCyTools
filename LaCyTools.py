@@ -2747,7 +2747,6 @@ class App():
                                         if SN > S_N_CUTOFF:
                                             numberPass += 1
                                 except AttributeError:
-                                    print "Bleh"
                                     pass
                         if numberTotal > 0:
                             fw.write("\t"+str(float(numberPass)/float(numberTotal)))
