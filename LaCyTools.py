@@ -421,6 +421,8 @@ class App():
     def __init__(self,master):
         # VARIABLES
         self.master = master
+        self.version = "1.0.0"
+        self.build = "1"
         self.inputFile = ""
         self.inputFileIdx = 0
         self.refFile = ""
@@ -1556,6 +1558,8 @@ class App():
             # Parameters #
             ##############
             fw.write("Parameter Settings\n")
+            fw.write("LaCyTools Version\t"+str(self.version)+"\n")
+            fw.write("LaCyTools Build\t"+str(self.build)+"\n")
             if self.alFile != "":
                 fw.write("Alignment Parameters\n")
                 fw.write("ALIGNMENT_TIME_WINDOW\t"+str(ALIGNMENT_TIME_WINDOW)+"\n")
@@ -2580,7 +2584,6 @@ class App():
                                                 sumInt += m.expInt
                                 break
                         fw.write("\t"+str(sumInt))
-                    totalExpInt = sumInt
                     fw.write("\n")
                     # List of monoisotopic masses
                     fw.write("Monoisotopic Mass")
@@ -2601,6 +2604,7 @@ class App():
                         fw.write(str(j[0]))
                         for k in compositions:
                             sumInt = 0
+                            totalExpInt = 0
                             qc = 0
                             for l in j[1]:
                                 try:
@@ -2608,6 +2612,7 @@ class App():
                                         for m in l.isotopes:
                                             if int(m.charge) == i:
                                                 sumInt += max(float(m.obsInt) - float(m.background),0)
+                                                totalExpInt += float(m.expInt)
                                         for m in l.isotopes:
                                             if int(m.charge) == i:
                                                 try:
