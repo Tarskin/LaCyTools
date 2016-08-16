@@ -44,7 +44,7 @@ ALIGNMENT_MIN_PEAK = 5          # The minimum number of features used for alignm
 
 # Calibration Parameters
 SUM_SPECTRUM_RESOLUTION = 100   # Number of data points per 1 whole m/z unit
-CALIB_MASS_WINDOW = 0.3         # This +/- mass window used to detect the accurate mass of a calibra
+CALIB_MASS_WINDOW = 0.5         # This +/- mass window (in Dalton) used to detect the accurate mass of a calibra
 CALIB_S_N_CUTOFF = 9            # The minimum S/N value of a feature to be used for calibration
 CALIB_MIN_PEAK = 3              # Minimum number of calibrants
 
@@ -422,7 +422,7 @@ class App():
         # VARIABLES
         self.master = master
         self.version = "1.0.0"
-        self.build = "1"
+        self.build = "2"
         self.inputFile = ""
         self.inputFileIdx = 0
         self.refFile = ""
@@ -636,7 +636,7 @@ class App():
         self.extracBack = Entry(top)
         self.extracBack.insert(0, BACKGROUND_WINDOW)
         self.extracBack.grid(row=17, column=1, sticky=W)
-        self.extracSnCutoffLabel = Label(top, text="Spectra QC S/N Cutoff")
+        self.extracSnCutoffLabel = Label(top, text="Spectra QC S/N cutoff")
         self.extracSnCutoffLabel.grid(row=18, column=0, sticky=W)
         self.extracSnCutoff = Entry(top)
         self.extracSnCutoff.insert(0, S_N_CUTOFF)
@@ -650,7 +650,7 @@ class App():
         createToolTip(self.alignMassWindowLabel,"The m/z window in Thompson around the specified exact m/z of an alignment feature, that LaCyTools will use to find the maximum of each feature.")
         createToolTip(self.alignSnLabel,"The minimum S/N of an alignment feature to be included in the alignment.")
         createToolTip(self.alignMinLabel,"The minimum number of features that have a S/N higher than the minimum S/N for alignment to occur.")
-        createToolTip(self.calibMassWindowLabel,"The mass window in Dalton around the specified exact m/z of a calibrant, that LaCyTools uses to determine the uncalibrated accurate mass.")
+        createToolTip(self.calibMassWindowLabel,"The mass window in Dalton around the specified exact m/z of a calibrant, that LaCyTools uses to determine the uncalibrated accurate mass. This value will be charge state corrected, i.e. for a triple charged analyte the used window will be the value specified here divided by 3.")
         createToolTip(self.calibSnLabel,"The minimum S/N of a calibrant to be included in the calibration.")
         createToolTip(self.calibMinLabel,"The minimum number of calibrants that have a S/N higher than the minimum S/N for calibration to occur.")
         createToolTip(self.sumSpecLabel,"The number of bins per m/z that will be used in the sum spectrum. A value of 100 means that each data point in the sum spectrum is spaced at 0.01 m/z.")
@@ -660,6 +660,7 @@ class App():
         createToolTip(self.extracMaxChargeLabel,"The maximum charge state that LaCyTools will attempt to use in calibration and quantitation for all features listed in the analyte reference file.")
         createToolTip(self.extracMinTotalLabel,"The minimum fraction of the theoretical isotopic pattern that LaCyTools will use for quantitation. For example, a value of 0.95 means that LaCyTools will quantify isotopes until the sum of the quantified isotopes exceeds 0.95 of the total theoretcal isotopic pattern.")
         createToolTip(self.extracBackLabel,"The mass window in Dalton that LaCyTools is allowed to look for the local background and noise for each analyte. For example, a value of 10 means that LaCyTools will look from 990 m/z to 1010 m/z for an analyte with an m/z of 1000.")
+        createToolTip(self.extracSnCutoffLabel,"The minimum S/N of an analyte to be included in the spectral QC. Specifically, for the output that lists what fraction of the total quantified analytes passed the here specified S/N value.")
 
     def getSettings(self):
         """ This function reads the settings file as specified in the
@@ -1268,7 +1269,6 @@ class App():
             window = CALIB_MASS_WINDOW / charge
             lowMz = self.binarySearch(spectrum,float(mass)-float(window),len(spectrum)-1,'left')
             highMz = self.binarySearch(spectrum,float(mass)+float(window),len(spectrum)-1,'right')
-            maximum = (0,0)
             x_points = []
             y_points = []
             for j in spectrum[lowMz:highMz]:
@@ -1277,6 +1277,7 @@ class App():
             newX = numpy.linspace(x_points[0],x_points[-1],2500*(x_points[-1]-x_points[0]))
             f = interp1d(x_points,y_points, kind='cubic')
             ySPLINE = f(newX)
+            maximum = (newX[int(len(newX)/2)],0)
             # Plot Code (for testing purposes)
             """fig =  plt.figure()
             ax = fig.add_subplot(111)
@@ -1290,7 +1291,7 @@ class App():
                 if j > maximum[1]:
                     maximum = (newX[index],j)
             # Check if maxima above S/N cut-off
-            values = self.getBackground(spectrum, maximum[0], 1, MASS_WINDOW)
+            values = self.getBackground(spectrum, maximum[0], charge, window)
             background,noise = values[0], values[2]
             if maximum[1] > background + CALIB_S_N_CUTOFF * noise:
                 maxima.append(maximum)
@@ -1329,7 +1330,7 @@ class App():
                 HIGH_MZ = i[1][-1][0]
         # This should be dynamically determined
         arraySize = (float(HIGH_MZ) - float(LOW_MZ)) * float(SUM_SPECTRUM_RESOLUTION)
-        combinedSpectra = numpy.zeros(shape=(arraySize+2,2))
+        combinedSpectra = numpy.zeros(shape=(int(arraySize+2),2))
         bins = []
         for index, i in enumerate(combinedSpectra):
             i[0] = float(LOW_MZ) + index*(float(1)/float(SUM_SPECTRUM_RESOLUTION))
