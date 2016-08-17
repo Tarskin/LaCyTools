@@ -49,8 +49,8 @@ CALIB_S_N_CUTOFF = 9            # The minimum S/N value of a feature to be used 
 CALIB_MIN_PEAK = 3              # Minimum number of calibrants
 
 # PARAMETERS
-MASS_MODIFIERS = []             # The mass modifiers refer to changes to the analyte.
-                                # Charge carrier should NOT go here (the program assumes that your analytes are protonated)
+MASS_MODIFIERS = []             # The mass modifiers refer to changes to the analyte
+CHARGE_CARRIER = ['proton']     # The charge carrier that is used for ionization
 
 # Extraction Parameters
 EXTRACTION_TYPE = 2             # 1 = Max, 0 = Total and 2 = Area
@@ -79,263 +79,331 @@ S36 = [('36S',0.0002,3.99501)]
 
 # Building block properties
 BLOCKS = {  #######################
-			# Structural Features #
-			#######################
-				###################
-				# Monosaccharides #
-				###################
-					'F':{'mass':146.05790879894,
-						'carbons':6,
-						'hydrogens':10,
-						'nitrogens':0,
-						'oxygens':4,
-						'sulfurs':0},
-					'H':{'mass':162.0528234185,
-						'carbons':6,
-						'hydrogens':10,
-						'nitrogens':0,
-						'oxygens':5,
-						'sulfurs':0},
-					'N':{'mass':203.07937251951,
-						'carbons':8,
-						'hydrogens':13,
-						'nitrogens':1,
-						'oxygens':5,
-						'sulfurs':0},
-					'S':{'mass':291.09541650647,
-						'carbons':11,
-						'hydrogens':17,
-						'nitrogens':1,
-						'oxygens':8,
-						'sulfurs':0},
-					'L':{'mass':273.08485182277,
-						'carbons':11,
-						'hydrogens':15,
-						'nitrogens':1,
-						'oxygens':7,
-						'sulfurs':0},
-					'M':{'mass':305.11106657061,
-						'carbons':12,
-						'hydrogens':19,
-						'nitrogens':1,
-						'oxygens':8,
-						'sulfurs':0},
-					'E':{'mass':319.12671663475,
-						'carbons':13,
-						'hydrogens':21,
-						'nitrogens':1,
-						'oxygens':8,
-						'sulfurs':0},
-				#########################
-				# Mouse Monosaccharides #
-				#########################
-					'G':{'mass':307.0903311261,
-						'carbons':11,
-						'hydrogens':17,
-						'nitrogens':1,
-						'oxygens':9,
-						'sulfurs':0},
-					'Gl':{'mass':289.0797664424,
-						'carbons':11,
-						'hydrogens':15,
-						'nitrogens':1,
-						'oxygens':8,
-						'sulfurs':0},
-					'Ge':{'mass':335.1216312544,
-						'carbons':13,
-						'hydrogens':21,
-						'nitrogens':1,
-						'oxygens':9,
-						'sulfurs':0},
-				#######################
-				# Sugar Modifications #
-				#######################
-					'P':{'mass':79.96633088875,
-						'carbons':0,
-						'hydrogens':1,
-						'nitrogens':0,
-						'oxygens':3,
-						'sulfurs':0},
-					'Su':{'mass':79.95681485868,
-						'carbons':0,
-						'hydrogens':0,
-						'nitrogens':0,
-						'oxygens':3,
-						'sulfurs':1},
-					'Ac':{'mass':42.0105646837,
-						'carbons':2,
-						'hydrogens':2,
-						'nitrogens':0,
-						'oxygens':1,
-						'sulfurs':0},
-				##############################
-				# Reducing End Modifications #
-				##############################
-					'aa':{'mass':139.06332853255,
-						'carbons':7,
-						'hydrogens':9,
-						'nitrogens':1,
-						'oxygens':2,
-						'sulfurs':0},
-					'ab':{'mass':138.07931294986,
-						'carbons':7,
-						'hydrogens':10,
-						'nitrogens':2,
-						'oxygens':1,
-						'sulfurs':0},
-					'free':{'mass':18.0105646837,
-						'carbons':0,
-						'hydrogens':2,
-						'nitrogens':0,
-						'oxygens':1,
-						'sulfurs':0},
-			###################
-			# Charge Carriers #
-			###################
-					#################
-					# Positive Mode #
-					#################
-					'sodium':{'mass':22.9897692809,
-						'carbons':0,
-						'hydrogens':0,
-						'nitrogens':0,
-						'oxygens':0,
-						'sulfurs':0},
-					'potassium':{'mass':38.96370668,
-						'carbons':0,
-						'hydrogens':0,
-						'nitrogens':0,
-						'oxygens':0,
-						'sulfurs':0},
-					'proton':{'mass':1.007276466812,
-						'carbons':0,
-						'hydrogens':0,
-						'nitrogens':0,
-						'oxygens':0,
-						'sulfurs':0},
-					#################
-					# Negative Mode #
-					#################
-					'protonLoss':{'mass':-1.007276466812,
-						'carbons':0,
-						'hydrogens':0,
-						'nitrogens':0,
-						'oxygens':0,
-						'sulfurs':0},
-					'electron':{'mass':0.00054857990946,
-						'carbons':0,
-						'hydrogens':0,
-						'nitrogens':0,
-						'oxygens':0,
-						'sulfurs':0},
-			############
-			# Elements #
-			############
-					'_H':{'mass':1.007825,
-						'carbons':0,
-						'hydrogens':1,
-						'nitrogens':0,
-						'oxygens':0,
-						'sulfurs':0},
-					'_C':{'mass':12.000000,
-						'carbons':1,
-						'hydrogens':0,
-						'nitrogens':0,
-						'oxygens':0,
-						'sulfurs':0},
-					'_N':{'mass':14.003074,
-						'carbons':0,
-						'hydrogens':0,
-						'nitrogens':1,
-						'oxygens':0,
-						'sulfurs':0},
-					'_O':{'mass':15.994915,
-						'carbons':0,
-						'hydrogens':0,
-						'nitrogens':0,
-						'oxygens':1,
-						'sulfurs':0},
-					'_S':{'mass':31.972071,
-						'carbons':0,
-						'hydrogens':0,
-						'nitrogens':0,
-						'oxygens':0,
-						'sulfurs':1},
-					'_P':{'mass':30.973761,
-						'carbons':0,
-						'hydrogens':0,
-						'nitrogens':0,
-						'oxygens':0,
-						'sulfurs':1},
-					'_F':{'mass':18.998403,
-						'carbons':0,
-						'hydrogens':0,
-						'nitrogens':0,
-						'oxygens':0,
-						'sulfurs':0},
-					'_Na':{'mass':22.989770,
-						'carbons':0,
-						'hydrogens':0,
-						'nitrogens':0,
-						'oxygens':0,
-						'sulfurs':0},
-					'_K':{'mass':38.963708,
-						'carbons':0,
-						'hydrogens':0,
-						'nitrogens':0,
-						'oxygens':0,
-						'sulfurs':0},
-			#################
-			# Custom Blocks #
-			#################
-					####################
-					# Immunoglobulin G #
-					####################
-					'IgGI':{'mass':1188.5047307674,
-						'carbons':50,
-						'hydrogens':72,
-						'nitrogens':14,
-						'oxygens':20,
-						'sulfurs':0},
-					'IgGIV':{'mass':1172.5098161478,
-						'carbons':50,
-						'hydrogens':72,
-						'nitrogens':14,
-						'oxygens':19,
-						'sulfurs':0},
-					'IgGII':{'mass':1156.5149015283,
-						'carbons':50,
-						'hydrogens':72,
-						'nitrogens':14,
-						'oxygens':18,
-						'sulfurs':0},
-					####################
-					# Immunoglobulin A #
-					####################
-					'Q':{'mass':4135.882086,
-						'carbons':177,
-						'hydrogens':270,
-						'nitrogens':50,
-						'oxygens':59,
-						'sulfurs':3},
-					'R':{'mass':2962.590442,
-						'carbons':128,
-						'hydrogens':219,
-						'nitrogens':37,
-						'oxygens':41,
-						'sulfurs':1},
-					'T':{'mass':2346.1348023,
-						'carbons':101,
-						'hydrogens':163,
-						'nitrogens':27,
-						'oxygens':33,
-						'sulfurs':2},
-					'U':{'mass':2183.0709257,
-						'carbons':92,
-						'hydrogens':154,
-						'nitrogens':26,
-						'oxygens':33,
-						'sulfurs':2}}
+            # Structural Features #
+            #######################
+                ###################
+                # Monosaccharides #
+                ###################
+                    'F':{'mass':146.05790879894,
+                        'available_for_charge_carrier':0,
+                        'carbons':6,
+                        'hydrogens':10,
+                        'nitrogens':0,
+                        'oxygens':4,
+                        'sulfurs':0},
+                    'H':{'mass':162.0528234185,
+                        'available_for_charge_carrier':0,
+                        'carbons':6,
+                        'hydrogens':10,
+                        'nitrogens':0,
+                        'oxygens':5,
+                        'sulfurs':0},
+                    'N':{'mass':203.07937251951,
+                        'available_for_charge_carrier':0,
+                        'carbons':8,
+                        'hydrogens':13,
+                        'nitrogens':1,
+                        'oxygens':5,
+                        'sulfurs':0},
+                    'S':{'mass':291.09541650647,
+                        'available_for_charge_carrier':0,
+                        'carbons':11,
+                        'hydrogens':17,
+                        'nitrogens':1,
+                        'oxygens':8,
+                        'sulfurs':0},
+                    'L':{'mass':273.08485182277,
+                        'available_for_charge_carrier':0,
+                        'carbons':11,
+                        'hydrogens':15,
+                        'nitrogens':1,
+                        'oxygens':7,
+                        'sulfurs':0},
+                    'M':{'mass':305.11106657061,
+                        'available_for_charge_carrier':0,
+                        'carbons':12,
+                        'hydrogens':19,
+                        'nitrogens':1,
+                        'oxygens':8,
+                        'sulfurs':0},
+                    'E':{'mass':319.12671663475,
+                        'available_for_charge_carrier':0,
+                        'carbons':13,
+                        'hydrogens':21,
+                        'nitrogens':1,
+                        'oxygens':8,
+                        'sulfurs':0},
+                #########################
+                # Mouse Monosaccharides #
+                #########################
+                    'G':{'mass':307.0903311261,
+                        'available_for_charge_carrier':0,
+                        'carbons':11,
+                        'hydrogens':17,
+                        'nitrogens':1,
+                        'oxygens':9,
+                        'sulfurs':0},
+                    'Gl':{'mass':289.0797664424,
+                        'available_for_charge_carrier':0,
+                        'carbons':11,
+                        'hydrogens':15,
+                        'nitrogens':1,
+                        'oxygens':8,
+                        'sulfurs':0},
+                    'Ge':{'mass':335.1216312544,
+                        'available_for_charge_carrier':0,
+                        'carbons':13,
+                        'hydrogens':21,
+                        'nitrogens':1,
+                        'oxygens':9,
+                        'sulfurs':0},
+                #######################
+                # Sugar Modifications #
+                #######################
+                    'P':{'mass':79.96633088875,
+                        'available_for_charge_carrier':0,
+                        'carbons':0,
+                        'hydrogens':1,
+                        'nitrogens':0,
+                        'oxygens':3,
+                        'sulfurs':0},
+                    'Su':{'mass':79.95681485868,
+                        'available_for_charge_carrier':0,
+                        'carbons':0,
+                        'hydrogens':0,
+                        'nitrogens':0,
+                        'oxygens':3,
+                        'sulfurs':1},
+                    'Ac':{'mass':42.0105646837,
+                        'available_for_charge_carrier':0,
+                        'carbons':2,
+                        'hydrogens':2,
+                        'nitrogens':0,
+                        'oxygens':1,
+                        'sulfurs':0},
+                ##############################
+                # Reducing End Modifications #
+                ##############################
+                    'aa':{'mass':139.06332853255,
+                        'available_for_charge_carrier':0,
+                        'carbons':7,
+                        'hydrogens':9,
+                        'nitrogens':1,
+                        'oxygens':2,
+                        'sulfurs':0},
+                    'ab':{'mass':138.07931294986,
+                        'available_for_charge_carrier':0,
+                        'carbons':7,
+                        'hydrogens':10,
+                        'nitrogens':2,
+                        'oxygens':1,
+                        'sulfurs':0},
+                    'free':{'mass':18.0105646837,
+                        'available_for_charge_carrier':0,
+                        'carbons':0,
+                        'hydrogens':2,
+                        'nitrogens':0,
+                        'oxygens':1,
+                        'sulfurs':0},
+            ###################
+            # Charge Carriers #
+            ###################
+                    #################
+                    # Positive Mode #
+                    #################
+                    'sodium':{'mass':22.9897692809,
+                        'available_for_charge_carrier':1,
+                        'carbons':0,
+                        'hydrogens':0,
+                        'nitrogens':0,
+                        'oxygens':0,
+                        'sulfurs':0},
+                    'potassium':{'mass':38.96370668,
+                        'available_for_charge_carrier':1,
+                        'carbons':0,
+                        'hydrogens':0,
+                        'nitrogens':0,
+                        'oxygens':0,
+                        'sulfurs':0},
+                    'proton':{'mass':1.007276466812,
+                        'available_for_charge_carrier':1,
+                        'carbons':0,
+                        'hydrogens':0,
+                        'nitrogens':0,
+                        'oxygens':0,
+                        'sulfurs':0},
+                    #################
+                    # Negative Mode #
+                    #################
+                    'protonLoss':{'mass':-1.007276466812,
+                        'available_for_charge_carrier':0,
+                        'carbons':0,
+                        'hydrogens':0,
+                        'nitrogens':0,
+                        'oxygens':0,
+                        'sulfurs':0},
+                    'electron':{'mass':0.00054857990946,
+                        'available_for_charge_carrier':0,
+                        'carbons':0,
+                        'hydrogens':0,
+                        'nitrogens':0,
+                        'oxygens':0,
+                        'sulfurs':0},
+            ############
+            # Elements #
+            ############
+                    '_H':{'mass':1.007825,
+                        'available_for_charge_carrier':0,
+                        'carbons':0,
+                        'hydrogens':1,
+                        'nitrogens':0,
+                        'oxygens':0,
+                        'sulfurs':0},
+                    '_C':{'mass':12.000000,
+                        'available_for_charge_carrier':0,
+                        'carbons':1,
+                        'hydrogens':0,
+                        'nitrogens':0,
+                        'oxygens':0,
+                        'sulfurs':0},
+                    '_N':{'mass':14.003074,
+                        'available_for_charge_carrier':0,
+                        'carbons':0,
+                        'hydrogens':0,
+                        'nitrogens':1,
+                        'oxygens':0,
+                        'sulfurs':0},
+                    '_O':{'mass':15.994915,
+                        'available_for_charge_carrier':0,
+                        'carbons':0,
+                        'hydrogens':0,
+                        'nitrogens':0,
+                        'oxygens':1,
+                        'sulfurs':0},
+                    '_S':{'mass':31.972071,
+                        'available_for_charge_carrier':0,
+                        'carbons':0,
+                        'hydrogens':0,
+                        'nitrogens':0,
+                        'oxygens':0,
+                        'sulfurs':1},
+                    '_P':{'mass':30.973761,
+                        'available_for_charge_carrier':0,
+                        'carbons':0,
+                        'hydrogens':0,
+                        'nitrogens':0,
+                        'oxygens':0,
+                        'sulfurs':1},
+                    '_F':{'mass':18.998403,
+                        'available_for_charge_carrier':0,
+                        'carbons':0,
+                        'hydrogens':0,
+                        'nitrogens':0,
+                        'oxygens':0,
+                        'sulfurs':0},
+                    '_Na':{'mass':22.989770,
+                        'available_for_charge_carrier':0,
+                        'carbons':0,
+                        'hydrogens':0,
+                        'nitrogens':0,
+                        'oxygens':0,
+                        'sulfurs':0},
+                    '_K':{'mass':38.963708,
+                        'available_for_charge_carrier':0,
+                        'carbons':0,
+                        'hydrogens':0,
+                        'nitrogens':0,
+                        'oxygens':0,
+                        'sulfurs':0},
+            #################
+            # Custom Blocks #
+            #################
+                    ####################
+                    # Immunoglobulin G #
+                    ####################
+                    'IgGI':{'mass':1188.5047307674,
+                        'available_for_charge_carrier':0,
+                        'carbons':50,
+                        'hydrogens':72,
+                        'nitrogens':14,
+                        'oxygens':20,
+                        'sulfurs':0},
+                    'IgGIV':{'mass':1172.5098161478,
+                        'available_for_charge_carrier':0,
+                        'carbons':50,
+                        'hydrogens':72,
+                        'nitrogens':14,
+                        'oxygens':19,
+                        'sulfurs':0},
+                    'IgGII':{'mass':1156.5149015283,
+                        'available_for_charge_carrier':0,
+                        'carbons':50,
+                        'hydrogens':72,
+                        'nitrogens':14,
+                        'oxygens':18,
+                        'sulfurs':0},
+                    ##########################    
+                    # Mouse Immunoglobulin G #
+                    ##########################
+                    'MIgGI':{'mass':1138.5043368456,
+                        'available_for_charge_carrier':0,
+                        'carbons':50,
+                        'hydrogen':70,
+                        'nitrogens':14,
+                        'oxygens':17,
+                        'sulfurs':0},
+                    'MIgGIS':{'mass':1104.5199869097,
+                        'available_for_charge_carrier':0,
+                        'carbons':47,
+                        'hydrogen':72,
+                        'nitrogens':14,
+                        'oxygens':17,
+                        'sulfurs':0},
+                    'MIgGII':{'mass':978.4406739597,
+                        'available_for_charge_carrier':0,
+                        'carbons':41,
+                        'hydrogen':62,
+                        'nitrogens':12,
+                        'oxygens':16,
+                        'sulfurs':0},
+                    'MIgGIII':{'mass':1096.4937721619,
+                        'available_for_charge_carrier':0,
+                        'carbons':48,
+                        'hydrogen':68,
+                        'nitrogens':14,
+                        'oxygens':16,
+                        'sulfurs':0},
+                    ####################
+                    # Immunoglobulin A #
+                    ####################
+                    'Q':{'mass':4135.882086,
+                        'available_for_charge_carrier':0,
+                        'carbons':177,
+                        'hydrogens':270,
+                        'nitrogens':50,
+                        'oxygens':59,
+                        'sulfurs':3},
+                    'R':{'mass':2962.590442,
+                        'available_for_charge_carrier':0,
+                        'carbons':128,
+                        'hydrogens':219,
+                        'nitrogens':37,
+                        'oxygens':41,
+                        'sulfurs':1},
+                    'T':{'mass':2346.1348023,
+                        'available_for_charge_carrier':0,
+                        'carbons':101,
+                        'hydrogens':163,
+                        'nitrogens':27,
+                        'oxygens':33,
+                        'sulfurs':2},
+                    'U':{'mass':2183.0709257,
+                        'available_for_charge_carrier':0,
+                        'carbons':92,
+                        'hydrogens':154,
+                        'nitrogens':26,
+                        'oxygens':33,
+                        'sulfurs':2}}
 UNITS = BLOCKS.keys()
 
 ###################
@@ -422,7 +490,7 @@ class App():
         # VARIABLES
         self.master = master
         self.version = "1.0.0"
-        self.build = "2"
+        self.build = "3"
         self.inputFile = ""
         self.inputFileIdx = 0
         self.refFile = ""
@@ -515,6 +583,7 @@ class App():
             global TIME_WINDOW
             global MIN_CHARGE
             global MAX_CHARGE
+            global CHARGE_CARRIER
             global MIN_TOTAL
             global BACKGROUND_WINDOW
             global S_N_CUTOFF
@@ -530,6 +599,10 @@ class App():
             TIME_WINDOW = float(self.extracTimeWindow.get())
             MIN_CHARGE = int(self.extracMinCharge.get())
             MAX_CHARGE = int(self.extracMaxCharge.get())
+            CHARGE_CARRIER = []
+            for i in UNITS:
+                if str(i) == master.chargeCarrierVar.get() and BLOCKS[i]['available_for_charge_carrier'] == 1:
+                    CHARGE_CARRIER.append(i)
             MIN_TOTAL = float(self.extracMinTotal.get())
             BACKGROUND_WINDOW = int(self.extracBack.get())
             S_N_CUTOFF = int(self.extracSnCutoff.get())
@@ -539,7 +612,12 @@ class App():
         def save(self):
             """ This function saves all changed settings to the 
             settings file.
-            """            
+            """
+            global CHARGE_CARRIER
+            CHARGE_CARRIER = []            
+            for i in UNITS:
+                if str(i) == master.chargeCarrierVar.get() and BLOCKS[i]['available_for_charge_carrier'] == 1:
+                    CHARGE_CARRIER.append(i)
             with open(SETTINGS_FILE,'w') as fw:
                 fw.write("ALIGNMENT_TIME_WINDOW\t"+str(float(self.alignTimeWindow.get()))+"\n")
                 fw.write("ALIGNMENT_MASS_WINDOW\t"+str(float(self.alignMassWindow.get()))+"\n")
@@ -553,12 +631,16 @@ class App():
                 fw.write("TIME_WINDOW\t"+str(float(self.extracTimeWindow.get()))+"\n")
                 fw.write("MIN_CHARGE\t"+str(int(self.extracMinCharge.get()))+"\n")
                 fw.write("MAX_CHARGE\t"+str(int(self.extracMaxCharge.get()))+"\n")
+                fw.write("CHARGE_CARRIER\t"+str(CHARGE_CARRIER[0])+"\n")
                 fw.write("MIN_TOTAL\t"+str(float(self.extracMinTotal.get()))+"\n")
                 fw.write("BACKGROUND_TOTAL\t"+str(int(self.extracBack.get()))+"\n")
                 fw.write("S_N_CUTOFF\t"+str(int(self.extracSnCutoff.get()))+"\n")
         
         master.measurementWindow = 1
         top = self.top = Toplevel()
+        self.chargeCarrierVar = StringVar()
+        self.chargeCarrierVar.set(CHARGE_CARRIER[0])
+        options = []
         top.protocol( "WM_DELETE_WINDOW", lambda: close(self))
         self.alignmentLabel = Label(top, text="Alignment parameters", font="bold")
         self.alignmentLabel.grid(row=0, columnspan=2, sticky=W)
@@ -626,25 +708,32 @@ class App():
         self.extracMaxCharge = Entry(top)
         self.extracMaxCharge.insert(0, MAX_CHARGE)
         self.extracMaxCharge.grid(row=15, column=1, sticky=W)
+        for i in UNITS:
+            if BLOCKS[i]['available_for_charge_carrier'] == 1:
+                options.append(i)
+        self.chargeCarrierLabel = Label(top, text="Charge carrier")
+        self.chargeCarrierLabel.grid(row=16, column=0, sticky=W)
+        self.chargeCarrier = OptionMenu(top, self.chargeCarrierVar, *options)
+        self.chargeCarrier.grid(row=16, column=1, sticky=W)
         self.extracMinTotalLabel = Label(top, text="Minimum isotopic fraction")
-        self.extracMinTotalLabel.grid(row=16, column=0, sticky=W)
+        self.extracMinTotalLabel.grid(row=17, column=0, sticky=W)
         self.extracMinTotal = Entry(top)
         self.extracMinTotal.insert(0, MIN_TOTAL)
-        self.extracMinTotal.grid(row=16, column=1, sticky=W)
+        self.extracMinTotal.grid(row=17, column=1, sticky=W)
         self.extracBackLabel = Label(top, text="Background detection window")
-        self.extracBackLabel.grid(row=17, column=0, sticky=W)
+        self.extracBackLabel.grid(row=18, column=0, sticky=W)
         self.extracBack = Entry(top)
         self.extracBack.insert(0, BACKGROUND_WINDOW)
-        self.extracBack.grid(row=17, column=1, sticky=W)
+        self.extracBack.grid(row=18, column=1, sticky=W)
         self.extracSnCutoffLabel = Label(top, text="Spectra QC S/N cutoff")
-        self.extracSnCutoffLabel.grid(row=18, column=0, sticky=W)
+        self.extracSnCutoffLabel.grid(row=19, column=0, sticky=W)
         self.extracSnCutoff = Entry(top)
         self.extracSnCutoff.insert(0, S_N_CUTOFF)
-        self.extracSnCutoff.grid(row=18,column=1, sticky=W)
+        self.extracSnCutoff.grid(row=19,column=1, sticky=W)
         self.ok = Button(top,text = 'Ok', command = lambda: close(self))
-        self.ok.grid(row = 19, column = 0, sticky = W)
+        self.ok.grid(row = 20, column = 0, sticky = W)
         self.save = Button(top, text = 'Save', command = lambda: save(self))
-        self.save.grid(row = 19, column = 1, sticky = E)
+        self.save.grid(row = 20, column = 1, sticky = E)
         # Tooltips
         createToolTip(self.alignTimeWindowLabel,"The time window in seconds around the specified time of an alignment feature that LaCyTools is allowed to look for the maximum intensity of each feature.")
         createToolTip(self.alignMassWindowLabel,"The m/z window in Thompson around the specified exact m/z of an alignment feature, that LaCyTools will use to find the maximum of each feature.")
@@ -658,6 +747,7 @@ class App():
         createToolTip(self.extracTimeWindowLabel,"The rt window in seconds around the specified elution time of each cluster that contains features for quantitation. For example, a value of 10 will result in LaCyTools creating a sum spectrum from 90 s. to 110 s. for a cluster eluting at 100s.")
         createToolTip(self.extracMinChargeLabel,"The minimum charge state that LaCyTools will attempt to use in calibration and quantitation for all features listed in the analyte reference file.")
         createToolTip(self.extracMaxChargeLabel,"The maximum charge state that LaCyTools will attempt to use in calibration and quantitation for all features listed in the analyte reference file.")
+        createToolTip(self.chargeCarrierLabel,"The charge carrier that is applied to all specified analytes for quantitation.")
         createToolTip(self.extracMinTotalLabel,"The minimum fraction of the theoretical isotopic pattern that LaCyTools will use for quantitation. For example, a value of 0.95 means that LaCyTools will quantify isotopes until the sum of the quantified isotopes exceeds 0.95 of the total theoretcal isotopic pattern.")
         createToolTip(self.extracBackLabel,"The mass window in Dalton that LaCyTools is allowed to look for the local background and noise for each analyte. For example, a value of 10 means that LaCyTools will look from 990 m/z to 1010 m/z for an analyte with an m/z of 1000.")
         createToolTip(self.extracSnCutoffLabel,"The minimum S/N of an analyte to be included in the spectral QC. Specifically, for the output that lists what fraction of the total quantified analytes passed the here specified S/N value.")
@@ -717,17 +807,26 @@ class App():
                     S_N_CUTOFF = int(chunks[1])
                         
     def feature_reader(self,file):
-        """ This reads the contents of the 'features.txt' file and stores
-        the relevant values in a list.
+        """ This reads the contents of the alignmen features file and 
+        stores the relevant values in a list.
+        
+        INPUT: A filename
+        OUTPUT: A list of m/z,retention lists (elements are type float)
         """
         features = []
         with open(file,'r') as fr:
             for line in fr:
-                if line[0][0].isdigit():
-                    line = line.rstrip().split()
-                    features.append(map(float,line))
-                else:
-                    continue
+                try:
+                    if line[0][0].isdigit():
+                        line = line.rstrip().split()
+                        features.append(map(float,line))
+                except IndexError:
+                    print "Incorrect line observed in: "+str(file)
+                    if self.log == True:
+                        with open('LaCyTools.log', 'a') as flog:
+                            flog.write(str(datetime.now())+ "Incorrect line observed in: "+str(analyteFile)+"\n")
+                except:
+                    print "Unexpected Error: ", sys.exc_info()[0]
         return features
 
     def fitFunc(self, x,a,b,c):
@@ -812,6 +911,14 @@ class App():
         return z
 
     def dataPopup(self,master):
+        """ This function creates a popup window belonging to the HD5
+        data format. The window has a button where the user has to select
+        the location of his mzXML files, a checkbox indicating if the
+        mzXML files can be deleted afterwards and lastly a run button.
+        
+        INPUT: None
+        OUTPUT: None
+        """
         if master.dataWindow == 1:
             return
         master.dataWindow = 1
@@ -931,6 +1038,19 @@ class App():
         tkMessageBox.showinfo("Status Message","Batch Convert finished on "+str(datetime.now()))
 
     def batchProcess(self,master):
+        """ This is the main controller function for batch processing.
+        First, the function checks if any reference or alignment file 
+        was selected, producing a message box if this is not the case.
+        Afterwards, the function checks whether or not it has to read
+        from HD5 files or other accepted file formats. Subsequently,
+        it performs alignment if an alignment file is selected, followed
+        by quantitation (and calibration) if a reference list is
+        selected. Finally, it will combine all the individual results
+        into a summary file before cleaning up.
+        
+        INPUT: None
+        OUTPUT: A summary file
+        """
         import time
         start = time.time()
         self.batch = True
@@ -1132,19 +1252,17 @@ class App():
                             with open(outFile,'w') as fw:
                                 fw.write("\n".join(str(j[0])+"\t"+str(j[1]) for j in spectrum))
                             continue
-                        #z = numpy.polyfit(presentCalibrants,measuredMaximaMZ,2)
                         f = numpy.poly1d(z)
                         calOut = str(file.split(".")[0])+"_"+str(index)+".calibration"
                         with open(calOut,'w') as fw2:
                             for index,j in enumerate(measuredMaximaMZ):
                                 fw2.write("accurate mass: "+str(presentCalibrants[index])+" measured at "+str(j) +" being calibrated to: "+str(f(j))+"\n")
-                        #y = f(measuredMaximaMZ)
-                        outputBatch = []
                         mzList = []
                         intList = []
                         for j in spectrum:
                             mzList.append(float(j[0]))
                             intList.append(int(j[1]))
+                        # Additional batches still work here
                         # Transform python list into numpy array
                         mzArray = numpy.array(mzList)
                         newArray = f(mzArray)
@@ -1167,7 +1285,6 @@ class App():
                             fw.write("\n".join(str(j[0])+"\t"+str(j[1]) for j in spectrum))
                     self.extractData(chunks[i],spectrum,results)
                 self.writeResults(results,file)
-                master.batchProcess = 0
             self.combineResults()
         if self.ptFile is not None:
             self.ptFile.close()
@@ -1176,7 +1293,12 @@ class App():
         tkMessageBox.showinfo("Status Message","Batch Process finished on "+str(datetime.now()))
 
     def writeCalibration(self,function,array):
-        """ TODO
+        """ This function creates a calibrated mzXML file. However, the
+        function is currently not being used and might be removed in the
+        future.
+        
+        INPUT: Calibration function and the raw data in an array
+        OUTPUT: A calibrated mzXML file
         """
         endian = "!"
         started = False
@@ -1261,7 +1383,15 @@ class App():
         return actualCalibrants
 
     def getLocalMaxima(self,features,spectrum):
-        """ TODO
+        """ This function takes a list of potential calibrants and will
+        identify the m/z value that shows the maximum intensity. The
+        function will determine the accurate mass from a cubic spline
+        that is fitted through the data points, yielding improved post
+        calibration mass accuracy.
+        
+        INPUT: A spectrum and a list of features (mass,charge)
+        OUTPUT: A containing (accurate mass, intensity) tuples for the
+                calibrants that passed the user specified S/N cutoff.
         """
         maxima = []
         for i in features:
@@ -1316,7 +1446,12 @@ class App():
     def sumSpectrum(self,time,array):
         """ This function creates a summed spectrum and returns the
         resulting spectrum back to the calling function.
+        
+        INPUT: The retention time-time window and an array containing
+               the entire measurement
+        OUTPUT: A sum spectrum in array form (m/z, intensity)
         """
+
         time = tuple(time.split('-'))
         # This is returning None's now
         lowTime = self.binarySearch(array,float(time[0])-float(time[1]),len(array)-1,'left')
@@ -1357,6 +1492,9 @@ class App():
         return combinedSpectra
 
     def findNearest(self,array,value):
+        """ A depracated function, will most likely be removed in the
+        near future.
+        """
         if value >= array[0][0] and value <= array[-1][0]:
             diff = 1
             # First Pass
@@ -1388,6 +1526,9 @@ class App():
     def transform_mzXML(self,file,fit,alignFunction):
         """Reads the mzXML file and transforms the reported retention
         time by the specified polynomial function.
+        
+        INPUT: A filename, alignment function and fitting model
+        OUTPUT: An aligned mzXML file
         """
         with open(file,'r') as fr:
             outFile = os.path.split(file)[-1]
@@ -1422,6 +1563,9 @@ class App():
     def alignRTs(self,file,polynomial):
         """Reads the mzXML file and transforms the reported retention
         time by the specified polynomial function.
+        
+        INPUT: A filename and the alignment function
+        OUTPUT: An aligned mzXML file
         """
         print "Aligning file", self.inputFile
         i = self.inputFileIdx
@@ -1447,6 +1591,9 @@ class App():
     def combineResults(self):
         """ This function reads all the raw files and creates the summary
         output file.
+        
+        INPUT: None
+        OUTPUT: A summary file
         """
         total = []
         for file in glob.glob(os.path.join(str(self.batchFolder),"*.raw")):
@@ -2764,6 +2911,9 @@ class App():
     def writeResults(self,results,file):
         """ This function writes the resultes per file away to a raw
         file.
+        
+        INPUT: A file name and a list of results
+        OUTPUT: A raw file per measurement
         """
         outFile = os.path.split(file)[-1]
         outFile = outFile.split(".")[0]
@@ -2777,7 +2927,12 @@ class App():
                 fw.write(str(composition)+"\t"+str(charge)+"\t"+str(isotope)+"\t"+str(i[4][1])+"\t"+str(i[2])+"\t"+str(i[4][4])+"\t"+str(i[4][2])+"\t"+str(i[4][3])+"\t"+str(i[4][5])+"\t"+str(i[0])+"\t"+str(i[1][1])+"\t"+str(i[1][0])+"\t"+str(i[1][2])+"\t"+str(i[3])+"\n")
 
     def batchPopup(self,master):
-        """ TODO
+        """ This function creates a pop up box in which all the parameters
+        for a batch process can be set and visualized. The window can
+        access and set the masters alFile, refFile and batchFolder.
+        The window can also call the outputPopup function (to specify 
+        the contents of final summary) and start the actual
+        batchProcess function.
 
         INPUT: None
         OUTPUT: None
@@ -2788,6 +2943,12 @@ class App():
         self.al = StringVar()
         self.ref = StringVar()
         self.folder = StringVar()
+        if master.alFile:
+            self.al.set(master.alFile)
+        if master.refFile:
+            self.ref.set(master.refFile)
+        if master.batchFolder:
+            self.folder.set(master.batchFolder)
         def alButton():
             master.openAlFile()
             self.al.set(master.alFile)
@@ -2948,7 +3109,12 @@ class App():
             setattr(self,'inputFile',file_path)
 
     def openCalFile(self):
-        """ TODO
+        """ This function opens a Tkinter filedialog, asking the user
+        to select a file. The chosen file is then set to the
+        self.calFile variable.
+        
+        INPUT: None
+        OUTPUT: None
         """
         file_path = tkFileDialog.askopenfilename()
         if not file_path:
@@ -2971,7 +3137,12 @@ class App():
             setattr(self,'batchFolder',folder_path)
 
     def openRefFile(self):
-        """ PLACE HOLDER.
+        """ This function opens a Tkinter filedialog, asking the user
+        to select a file. The chosen file is then set to the
+        self.refFile variable.
+        
+        INPUT: None
+        OUTPUT: None
         """
         file_path = tkFileDialog.askopenfilename()
         if not file_path:
@@ -2980,7 +3151,12 @@ class App():
             setattr(self,'refFile',file_path)
 
     def openAlFile(self):
-        """ PLACE HOLDER.
+        """ This function opens a Tkinter filedialog, asking the user
+        to select a file. The chosen file is then set to the
+        self.alFile variable.
+        
+        INPUT: None
+        OUTPUT: None
         """
         file_path = tkFileDialog.askopenfilename()
         if not file_path:
@@ -2991,11 +3167,13 @@ class App():
     def processBlock(self, block, array, readTimes):
         """ This function processes a data block as taken from the input
         file.
+        
+        INPUT: A data block from the mzXML file
+        OUTPUT: None
         """
-        """if "scan num" in block:
-            scan = block.split("scan num")[1]
-            scan = scan.split("\"")[1]
-        """
+        #if "scan num" in block:
+        #    scan = block.split("scan num")[1]
+        #    scan = scan.split("\"")[1]
 
         if "retentionTime" in block:
             rt = block.split("retentionTime")[1]
@@ -3003,10 +3181,8 @@ class App():
             if rt[0] == 'P':
                 rt = rt[2:-1]
 
-        """if "peaksCount" in block:
-            peaks = block.split("peaksCount")[1]
-            peaks = peaks.split("\"")[1]
-        """
+        #if "peaksCount" in block:
+        #    peaks = block.split("peaksCount")[1]
 
         # FIX not to catch zlib in encoded data
         if '"zlib"' in block:
@@ -3186,8 +3362,16 @@ class App():
         with open(analyteFile,'w') as fw:
             fw.write("# Peak\tm/z\tRel Area\twindow\trt\ttime window\Calibration\n")
             for i in lines:
-                if i[0] == "#":
-                    continue
+                try:
+                    if i[0] == "#":
+                        continue
+                except IndexError:
+                    print "Incorrect line observed in: "+str(analyteFile)
+                    if self.log == True:
+                        with open('LaCyTools.log', 'a') as flog:
+                            flog.write(str(datetime.now())+ "Incorrect line observed in: "+str(analyteFile)+"\n")
+                except:
+                    print "Unexpected Error: ", sys.exc_info()[0]
                 i = i.split("\t")
                 # Initialize variables
                 massWindow = MASS_WINDOW
@@ -3225,9 +3409,9 @@ class App():
                     for index,k in enumerate(results):
                         contribution += float(k[1])
                         if calibration == True and k[1] == maxIsotope:
-                            fw.write(str(i[0])+"_"+str(j)+"_"+str(index)+"\t"+str((k[0]+j*C[0][2])/j)+"\t"+str(k[1])+"\t"+str(massWindow)+"\t"+str(time)+"\t"+str(timeWindow)+"\tTrue\n")
+                            fw.write(str(i[0])+"_"+str(j)+"_"+str(index)+"\t"+str((k[0]+j*BLOCKS[CHARGE_CARRIER[0]]['mass'])/j)+"\t"+str(k[1])+"\t"+str(massWindow)+"\t"+str(time)+"\t"+str(timeWindow)+"\tTrue\n")
                         else:
-                            fw.write(str(i[0])+"_"+str(j)+"_"+str(index)+"\t"+str((k[0]+j*C[0][2])/j)+"\t"+str(k[1])+"\t"+str(massWindow)+"\t"+str(time)+"\t"+str(timeWindow)+"\tFalse\n")
+                            fw.write(str(i[0])+"_"+str(j)+"_"+str(index)+"\t"+str((k[0]+j*BLOCKS[CHARGE_CARRIER[0]]['mass'])/j)+"\t"+str(k[1])+"\t"+str(massWindow)+"\t"+str(time)+"\t"+str(timeWindow)+"\tFalse\n")
                         #if k[1] < MIN_CONTRIBUTION:
                         #   break
                         if contribution > MIN_TOTAL:
@@ -3239,7 +3423,12 @@ class App():
     ####################################################
 
     def extractData(self,ref,array,results):
-        """ PLACE HOLDER.
+        """ This is the controller function for quantitation of data.
+        
+        INPUT: A ref file and input file
+        OUTPUT: A list of results consisting of (area, 'background',
+                accurate mass, maximum intensity point and the current
+                analyte)
         """
         if self.refFile == "":
             tkMessageBox.showinfo("Error Message","No reference file selected")
@@ -3317,7 +3506,13 @@ class App():
                 print i
 
     def getBackground(self, array, target, charge, width):
-        """ TODO
+        """ This functin will determine the background and noise for a
+        given analyte.
+        
+        INPUT: The spectrum in array form, the exact m/z of the analyte,
+               the charge of the analyte and the m/z window
+        OUTPUT: A list of (the average background, the background area
+                and the noise)
         """
         backgroundPoint = 1000000000000000000000000000000000000000000000000000      # Ridiculous start value
         totals = []
@@ -3444,6 +3639,8 @@ class App():
             #print "Finished processing "+str(self.inputFile)
 
     def readPTData(self, array, readTimes):
+        """ TODO by Genadij Razdorov
+        """
         print "Processing "+str(self.inputFile)
         i = self.inputFileIdx
 
@@ -3465,6 +3662,9 @@ class App():
     def refParser(self, ref):
         """Reads the reference file and fills the list 'ref' with names
         and parameters inherent to the chosen analytes to be integrated.
+        
+        INPUT: An empty ref list
+        OUTPUT: A filled ref list
         """
         with open(os.path.join(self.batchFolder,"analytes.ref"),'r') as fr:
             for line in fr:
@@ -3475,7 +3675,13 @@ class App():
 
     def mzXMLDecoder(self, rt, peaks, precision, compression, byteOrder, array):
         """ This function parses the encoded string from an mzXML file.
-        The decoded data is finally added to the
+        The decoded data is finally added to the data array containing
+        the entire measurement.
+        
+        INPUT: An encoded string and the data array containing all of 
+                the measuremen that has been processed up to this point
+        OUTPUT: A data array containing all of the measuremen that has
+                been processed up to this point
         """
         endian = ">"
         if byteOrder == 'little':
