@@ -65,7 +65,7 @@ CALIB_S_N_CUTOFF = 9            # The minimum S/N value of a feature to be used 
 CALIB_MIN_PEAK = 3              # Minimum number of calibrants
 
 # PARAMETERS
-MASS_MODIFIERS = ['free']       # The mass modifiers refer to changes to the analyte
+MASS_MODIFIERS = []             # The mass modifiers refer to changes to the analyte
 CHARGE_CARRIER = ['proton']     # The charge carrier that is used for ionization
 
 # Extraction Parameters
