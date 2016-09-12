@@ -1,7 +1,23 @@
 #! /usr/bin/env python
+#
+# Copyright 2014-2016 Bas C. Jansen
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+# You should have received a coyp of the Apache 2.0 license along
+# with this program; if not, see 
+# http://www.apache.org/licenses/LICENSE-2.0
+
 from datetime import datetime
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolbar2TkAgg
-from scipy.interpolate import interp1d
+from scipy.interpolate import InterpolatedUnivariateSpline
 import scipy.optimize
 from scipy.optimize import curve_fit
 from Tkinter import *
@@ -49,7 +65,7 @@ CALIB_S_N_CUTOFF = 9            # The minimum S/N value of a feature to be used 
 CALIB_MIN_PEAK = 3              # Minimum number of calibrants
 
 # PARAMETERS
-MASS_MODIFIERS = []       # The mass modifiers refer to changes to the analyte
+MASS_MODIFIERS = ['free']       # The mass modifiers refer to changes to the analyte
 CHARGE_CARRIER = ['proton']     # The charge carrier that is used for ionization
 
 # Extraction Parameters
@@ -403,7 +419,52 @@ BLOCKS = {  #######################
                         'hydrogens':154,
                         'nitrogens':26,
                         'oxygens':33,
-                        'sulfurs':2}}
+                        'sulfurs':2},
+                    ###############
+                    # Haptoglobin #
+                    ###############
+                    'HNLT':{'mass':1736.8516,
+                        'available_for_charge_carrier':0,
+                        'carbons':50,
+                        'hydrogens':72,
+                        'nitrogens':14,
+                        'oxygens':20,
+                        'sulfurs':0},
+                    'HNLTMC':{'mass':2678.3851,
+                        'available_for_charge_carrier':0,
+                        'carbons':118,
+                        'hydrogens':191,
+                        'nitrogens':33,
+                        'oxygens':36,
+                        'sulfurs':1},
+                    'HNHS':{'mass':972.4665,
+                        'available_for_charge_carrier':0,
+                        'carbons':43,
+                        'hydrogens':64,
+                        'nitrogens':12,
+                        'oxygens':14,
+                        'sulfurs':0},
+                    'HNAT':{'mass':503.2704,
+                        'available_for_charge_carrier':0,
+                        'carbons':20,
+                        'hydrogens':37,
+                        'nitrogens':7,
+                        'oxygens':8,
+                        'sulfurs':0},
+                    'HNHSNAT':{'mass':1457.7263,
+                        'available_for_charge_carrier':0,
+                        'carbons':63,
+                        'hydrogens':99,
+                        'nitrogens':19,
+                        'oxygens':21,
+                        'sulfurs':0},
+                    'HNYS':{'mass':1269.6354,
+                        'available_for_charge_carrier':0,
+                        'carbons':57,
+                        'hydrogens':87,
+                        'nitrogens':15,
+                        'oxygens':18,
+                        'sulfurs':0}}
 UNITS = BLOCKS.keys()
 
 ###################
@@ -489,8 +550,8 @@ class App():
     def __init__(self,master):
         # VARIABLES
         self.master = master
-        self.version = "1.0.0"
-        self.build = "4"
+        self.version = "1.0.1"
+        self.build = "5"
         self.inputFile = ""
         self.inputFileIdx = 0
         self.refFile = ""
@@ -518,7 +579,6 @@ class App():
         self.log = True
         self.noise = "RMS"
         #self.noise = "MM"
-        self.batch = False
         self.fig = matplotlib.figure.Figure(figsize=(12, 6))
 
         # Attempt to retrieve previously saved settings from settingsfile
@@ -825,7 +885,7 @@ class App():
                     print "Incorrect line observed in: "+str(file)
                     if self.log == True:
                         with open('LaCyTools.log', 'a') as flog:
-                            flog.write(str(datetime.now())+ "Incorrect line observed in: "+str(analyteFile)+"\n")
+                            flog.write(str(datetime.now())+ "\tIncorrect line observed in: "+str(analyteFile)+"\n")
                 except:
                     print "Unexpected Error: ", sys.exc_info()[0]
         return features
@@ -1033,9 +1093,11 @@ class App():
                     raise
 
         rawfile.close()
-        print "Finished converting."
+        if self.log == True:
+            with open('LaCyTools.log', 'a') as flog:
+                flog.write(str(datetime.now())+ "\tFinished converting\n")
         end_time = time.time()
-        print "Batch convertion lasted for", (end_time - start_time) / 60., "minutes, or", (end_time - start_time) / len(filenames), "seconds per sample."
+        print "Batch conversion lasted for", (end_time - start_time) / 60., "minutes, or", (end_time - start_time) / len(filenames), "seconds per sample."
         tkMessageBox.showinfo("Status Message","Batch Convert finished on "+str(datetime.now()))
 
     def batchProcess(self,master):
@@ -1054,7 +1116,40 @@ class App():
         """
         import time
         start = time.time()
-        self.batch = True
+        # Safety feature (prevents batchProcess from being started multiple times)
+        if self.batchProcessing == 1:
+            tkMessageBox.showinfo("Error Message", "Batch Process already running")
+            return
+        self.batchProcessing = 1
+        #####################
+        # PROGRESS BAR CODE #
+        #####################
+        self.alPerc = StringVar()
+        self.extPerc = StringVar()
+        self.alPerc.set("0%")
+        self.extPerc.set("0%")
+        # barWindow = Tk()
+        barWindow = self.top = Toplevel()
+        barWindow.title("Progress Bar")
+        al = Label(barWindow, text="Alignment", padx=25)
+        al.grid(row=0, column=0, sticky="W")
+        ft = ttk.Frame(barWindow)
+        ft.grid(row=1, columnspan=2, sticky="")
+        perc1 = Label(barWindow, textvariable=self.alPerc)
+        perc1.grid(row=0, column=1, padx=25)
+        progressbar = ttk.Progressbar(ft, length=100, mode='determinate')
+        progressbar.grid(row=1, columnspan=2, sticky="")
+        ext = Label(barWindow, text="Quantitation", padx=25)
+        ext.grid(row=2, column=0, sticky="W")
+        ft2 = ttk.Frame(barWindow)
+        ft2.grid(row=3, columnspan=2, sticky="")
+        perc2 = Label(barWindow, textvariable=self.extPerc)
+        perc2.grid(row=2, column=1, padx=25)
+        progressbar2 = ttk.Progressbar(ft2, length=100, mode='determinate')
+        progressbar2.grid(row=3, columnspan=2, sticky="")
+        ###################
+        # END OF BAR CODE #
+        ###################
         # Check if reference or alignment file was selected
         if self.refFile == "" and self.alFile == "" and self.calFile == "":
             tkMessageBox.showinfo("File Error","No reference or alignment file selected")
@@ -1082,7 +1177,10 @@ class App():
                     scan['art'] = 0
                     scan.update()
                 self.ptFile.flush()
-            for file in filenames:
+            for index,file in enumerate(filenames):
+                self.alPerc.set(str(int( (float(index) / float(len(filenames) ) ) *100))+"%")
+                progressbar["value"] = int( (float(index) / float(len(filenames) ) ) *100)
+                progressbar.update()
                 array = []
                 timePairs = []
                 self.inputFile = file
@@ -1162,7 +1260,6 @@ class App():
                     if (peakIntensity - background)/noise > ALIGNMENT_S_N_CUTOFF:
                         timePairs.append((i[1],peakTime))
                     else:
-                        print "Feature: "+str(i)+" was not above ALIGNMENT_S_N_CUTOFF: "+str(ALIGNMENT_S_N_CUTOFF)
                         if self.log == True:
                             with open('LaCyTools.log', 'a') as flog:
                                 flog.write(str(datetime.now())+"\tFeature: "+str(i)+" was not above alignment S/N cutoff: "+str(ALIGNMENT_S_N_CUTOFF)+" in file: "+str(file)+"\n")
@@ -1173,10 +1270,9 @@ class App():
                     alignFunction = self.calcQuadratic(timePairs,"PowerLaw")
                     # Fall back to basic alignment (Linear)
                     if alignFunction == None:
-                        print "Advanced alignment failed on file: "+str(file)+", switching to basic alignment\n"
                         if self.log == True:
                             with open('LaCyTools.log', 'a') as flog:
-                                flog.write(str(datetime.now())+ "Advanced alignment failed on file: "+str(file)+", switching to basic alignment\n")
+                                flog.write(str(datetime.now())+ "\tAdvanced alignment failed on file: "+str(file)+", switching to basic alignment\n")
                         alignFunction = self.calcQuadratic(timePairs,"Linear")
                         if alignFunction == None:
                             if self.log == True:
@@ -1203,11 +1299,15 @@ class App():
                             lsq += float(features[index][0]) - fit(float(timePair[1]),*alignFunction[0])
                     self.transform_mzXML(file,fit,alignFunction[0])
                 else:
-                    print "File not aligned due to lack of features"
+                    if self.log == True:
+                        with open('LaCyTools.log', 'a') as flog:
+                            flog.write(str(datetime.now())+ "\tFile not aligned due to lack of features\n")
                     outFile = os.path.split(file)[-1]
                     outFile = "unaligned_"+outFile
                     outFile = os.path.join(self.batchFolder,outFile)
                     open(outFile,'w').close()
+        self.alPerc.set("100%")
+        progressbar["value"] = 100
         # (CALIBRATION AND) EXTRACTION
         if self.refFile != "":
             if self.analyteIntensity.get() == 0 and self.analyteRelIntensity.get() == 0 and self.analyteBackground.get() == 0 and self.analyteNoise.get() == 0 and self.alignmentQC.get() == 0 and self.qualityControl.get() == 0 and self.ppmQC.get() == 0 and self.SN.get() == 0 and self.spectraQualityControl.get() == 0:
@@ -1227,7 +1327,10 @@ class App():
             if os.path.isfile(os.path.join(self.batchFolder,"pytables.h5")) == False:
                 filenames = glob.glob(os.path.join(str(self.batchFolder),EXTRACTION+"*"+EXTENSION))
                 filenames2idx = dict([(filename, idx) for idx, filename in enumerate(filenames)])
-            for file in filenames:
+            for index,file in enumerate(filenames):
+                self.extPerc.set(str(int( (float(index) / float(len(filenames) ) ) *100))+"%")
+                progressbar2["value"] = int( (float(index) / float(len(filenames) ) ) *100)
+                progressbar2.update()
                 results = []
                 self.inputFile = file
                 self.inputFileIdx = filenames2idx[file]
@@ -1255,7 +1358,9 @@ class App():
                         if len(measuredMaximaMZ) >= CALIB_MIN_PEAK:
                             z = numpy.polyfit(measuredMaximaMZ,presentCalibrants,2) # This should be the correct one
                         else:
-                            print "Unable to calibrate the sum spectrum at "+str(i)+" seconds"
+                            if self.log == True:
+                                with open('LaCyTools.log', 'a') as flog:
+                                    flog.write(str(datetime.now())+ "\tUnable to calibrate the sum spectrum at "+str(i)+" seconds\n")
                             outFile = os.path.split(str(self.inputFile))[1]
                             outFile = outFile.split(".")[0]
                             outFile = "Uncalibrated_sumSpectrum_"+str(i)+"_"+str(outFile)+".xy"
@@ -1296,11 +1401,18 @@ class App():
                             fw.write("\n".join(str(j[0])+"\t"+str(j[1]) for j in spectrum))
                     self.extractData(chunks[i],spectrum,results)
                 self.writeResults(results,file)
+            # Wrap up stuff
+            self.extPerc.set("100%")
+            progressbar2["value"] = 100
+            barWindow.destroy()
             self.combineResults()
         if self.ptFile is not None:
             self.ptFile.close()
+        self.batchProcessing = 0
         end = time.time()
-        print "Batch process lasted for", (end - start) / 60., "minutes"
+        if self.log == True:
+            with open('LaCyTools.log', 'a') as flog:
+                flog.write(str(datetime.now())+ "\tBatch process lasted for "+str((end - start) / 60.)+"minutes\n")
         tkMessageBox.showinfo("Status Message","Batch Process finished on "+str(datetime.now()))
 
     def writeCalibration(self,function,array):
@@ -1396,9 +1508,9 @@ class App():
     def getLocalMaxima(self,features,spectrum):
         """ This function takes a list of potential calibrants and will
         identify the m/z value that shows the maximum intensity. The
-        function will determine the accurate mass from a cubic spline
-        that is fitted through the data points, yielding improved post
-        calibration mass accuracy.
+        function will determine the accurate mass from a interpolated 
+        univariate spline that is fitted through the data points, 
+        yielding improved post calibration mass accuracy.
         
         INPUT: A spectrum and a list of features (mass,charge)
         OUTPUT: A containing (accurate mass, intensity) tuples for the
@@ -1416,7 +1528,7 @@ class App():
                 x_points.append(j[0])
                 y_points.append(j[1])
             newX = numpy.linspace(x_points[0],x_points[-1],2500*(x_points[-1]-x_points[0]))
-            f = interp1d(x_points,y_points, kind='cubic')
+            f = InterpolatedUnivariateSpline(x_points,y_points)
             ySPLINE = f(newX)
             maximum = (newX[int(len(newX)/2)],0)
             # Plot Code (for testing purposes)
@@ -1424,9 +1536,12 @@ class App():
             ax = fig.add_subplot(111)
             plt.plot(x_points, y_points, 'b*')
             #plt.plot(newX,newY, 'b--')
-            plt.plot(newX,ySPLINE,'r--')
+            #plt.plot(newX,ySPLINE,'r--')
+            plt.plot(newX,yINTER,'r--')
+            plt.plot(newX,yUNIVAR,'g--')
             #plt.legend(['Raw Data','Guassian (All Points)','Cubic Spline'], loc='best')
-            plt.legend(['Raw Data','Cubic Spline'], loc='best')
+            #plt.legend(['Raw Data','Cubic Spline'], loc='best')
+            plt.legend(['Raw Data','Interp1d','Univariate Spline'], loc='best')
             plt.show()"""
             for index, j in enumerate(ySPLINE):
                 if j > maximum[1]:
@@ -1549,7 +1664,9 @@ class App():
             elif len(alignFunction) == 2:
                 outFile = "alignedLin_"+outFile
             outFile = os.path.join(self.batchFolder,outFile)
-            print "Writing output file: "+outFile
+            if self.log == True:
+                with open('LaCyTools.log', 'a') as flog:
+                    flog.write(str(datetime.now())+ "\tWriting output file: "+outFile+"\n")
             with open(outFile,'w') as fw:
                 for line in fr:
                     if 'retentionTime' in line:
@@ -1578,7 +1695,9 @@ class App():
         INPUT: A filename and the alignment function
         OUTPUT: An aligned mzXML file
         """
-        print "Aligning file", self.inputFile
+        if self.log == True:
+            with open('LaCyTools.log', 'a') as flog:
+                flog.write(str(datetime.now())+ "\tAligning file: "+str(self.inputFile)+"\n")
         i = self.inputFileIdx
         for row in self.ptFile.root.scans.where("sample == i"):
             time = row['rt']
@@ -3308,24 +3427,37 @@ class App():
         self.al = StringVar()
         self.ref = StringVar()
         self.folder = StringVar()
+
         if master.alFile:
             self.al.set(master.alFile)
+
         if master.refFile:
             self.ref.set(master.refFile)
+
         if master.batchFolder:
             self.folder.set(master.batchFolder)
+
         def alButton():
             master.openAlFile()
             self.al.set(master.alFile)
+
         def refButton():
             master.openRefFile()
             self.ref.set(master.refFile)
+
         def batchButton():
             master.openBatchFolder()
             self.folder.set(master.batchFolder)
+
         def close(self):
             master.batchWindow = 0
             top.destroy()
+
+        def run():
+            master.batchWindow = 0
+            top.destroy()
+            master.batchProcess(master)
+
         top = self.top = Toplevel()
         top.protocol( "WM_DELETE_WINDOW", lambda: close(self))
         self.aligns = Button(top, text = "Alignment File", widt = 25, command = lambda: alButton())
@@ -3344,7 +3476,7 @@ class App():
         self.batch.grid(row = 5, column = 1)
         self.output = Button(top, text = "Output Format", width = 25, command = lambda: master.outputPopup(master))
         self.output.grid(row = 6, column = 0,columnspan = 2)
-        self.run = Button(top, text = "Run Batch Process", width = 25, command = lambda: master.batchProcess(master))
+        self.run = Button(top, text = "Run Batch Process", width = 25, command = lambda: run())
         self.run.grid(row = 7, column = 0, columnspan = 2)
         #top.lift()
         # Couple the attributes to button presses
@@ -3724,10 +3856,12 @@ class App():
         # Chop composition into sub units and get exact mass & carbon count
         analyteFile = os.path.join(self.batchFolder,"analytes.ref")
         #if os.path.exists(analyteFile) == True:
+        #   TODO: MAKE THIS CHECK EXISTING ANALYTE FILE IF IT MATCHES SUPPLIED REF FILE
         #   print "USING EXISTING REFERENCE FILE"
         #   return
-        print "PRE-PROCESSING REFERENCE FILE"
-        print "THIS MAY TAKE A WHILE"
+        if self.log == True:
+            with open('LaCyTools.log', 'a') as flog:
+                flog.write(str(datetime.now())+ "\tPRE-PROCESSING REFERENCE FILE\n")
         with open(analyteFile,'w') as fw:
             fw.write("# Peak\tm/z\tRel Area\twindow\trt\ttime window\tCalibration\n")
             for i in lines:
@@ -3735,12 +3869,13 @@ class App():
                     if i[0] == "#":
                         continue
                 except IndexError:
-                    print "Incorrect line observed in: "+str(analyteFile)
                     if self.log == True:
                         with open('LaCyTools.log', 'a') as flog:
-                            flog.write(str(datetime.now())+ "Incorrect line observed in: "+str(analyteFile)+"\n")
+                            flog.write(str(datetime.now())+ "\tIncorrect line observed in: "+str(analyteFile)+"\n")
                 except:
-                    print "Unexpected Error: ", sys.exc_info()[0]
+                    if self.log == True:
+                        with open('LaCyTools.log', 'a') as flog:
+                            flog.write(str(datetime.now())+ "\tUnexpected Error: "+str(sys.exc_info()[0])+"\n")
                 i = i.split("\t")
                 # Initialize variables
                 massWindow = MASS_WINDOW
@@ -3785,7 +3920,9 @@ class App():
                         #   break
                         if contribution > MIN_TOTAL:
                             break
-        print "PRE-PROCESSING COMPLETE"
+        if self.log == True:
+            with open('LaCyTools.log', 'a') as flog:
+                flog.write(str(datetime.now())+ "\tPRE-PROCESSING COMPLETE\n")
 
     ####################################################
     # END OF FUNCTIONS RELATED TO PARSING ANALYTE FILE #
@@ -3849,14 +3986,16 @@ class App():
                     if self.ppmQC.get() == 1:
                         try:
                             newX = numpy.linspace(x_points[0],x_points[-1],2500*(x_points[-1]-x_points[0]))
-                            f = interp1d(x_points,y_points, kind='cubic')
+                            f = InterpolatedUnivariateSpline(x_points,y_points)
                             ySPLINE = f(newX)
                             for index, j in enumerate(ySPLINE):
                                 if j > maximum[1]:
                                     maximum = (newX[index],j)
                         except ValueError:
                             data = zip(x_points,y_points)
-                            print "Guassian Curve Fit failed for analyte: "+str(i[0])+", reverting to non fitted local maximum"
+                            if self.log == True:
+                                with open('LaCyTools.log', 'a') as flog:
+                                    flog.write(str(datetime.now())+ "\tGuassian Curve Fit failed for analyte: "+str(i[0])+", reverting to non fitted local maximum\n")
                             for j in data:
                                 if j[1] > maximum[1]:
                                     maximum = (j[0],j[1])
@@ -3868,7 +4007,7 @@ class App():
                     maximum = (0,0)
             # Check if maxima above S/N cut-off
             results.append((intensity,background,maximum[0],maxInt,i))
-        if self.batch == True:
+        if self.batchProcessing == 1:
             return results
         else:
             for i in results:
@@ -3993,7 +4132,9 @@ class App():
         started = False
         block = ""
         with open(self.inputFile,'r') as fr:
-            print "Processing "+str(self.inputFile)
+            if self.log == True:
+                with open('LaCyTools.log', 'a') as flog:
+                    flog.write(str(datetime.now())+ "\tProcessing "+str(self.inputFile)+"\n")
             for number, line in enumerate(fr):
                 if '</dataProcessing>' in line:
                     header = False
@@ -4010,7 +4151,9 @@ class App():
     def readPTData(self, array, readTimes):
         """ TODO by Genadij Razdorov
         """
-        print "Processing "+str(self.inputFile)
+        if self.log == True:
+            with open('LaCyTools.log', 'a') as flog:
+                flog.write(str(datetime.now())+ "\tProcessing "+str(self.inputFile)+"\n")
         i = self.inputFileIdx
 
         for row in self.ptFile.root.scans.where("sample == i"):
