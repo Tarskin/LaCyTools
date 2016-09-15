@@ -75,7 +75,7 @@ TIME_WINDOW = 8                 # The +/- time window that will be used around a
 MIN_CHARGE = 2                  # The minimum charge state that the program will integrate for all features (unless overwritten in the composition file)
 MAX_CHARGE = 3                  # The maximum charge state that the program will integrate for all features (unless overwritten in the composition file)
 #MIN_CONTRIBUTION = 0.01        # Minimum contribution to isotopic distrubition to be included (NOT BEING USED ATM)
-MIN_TOTAL = 0.99                # Desired contribution of extracted isotopes of total isotopic pattern
+MIN_TOTAL = 0.95                # Desired contribution of extracted isotopes of total isotopic pattern
 BACKGROUND_WINDOW = 10          # Total m/z window (+ and -) to search for background
 S_N_CUTOFF = 9                  # Minimum signal to noise value of an analyte to be included in the percentage QC
 
@@ -551,7 +551,7 @@ class App():
         # VARIABLES
         self.master = master
         self.version = "1.0.1"
-        self.build = "5"
+        self.build = "6"
         self.inputFile = ""
         self.inputFileIdx = 0
         self.refFile = ""
@@ -1257,7 +1257,7 @@ class App():
                     ###############
                     # end of plot #
                     ###############
-                    if (peakIntensity - background)/noise > ALIGNMENT_S_N_CUTOFF:
+                    if peakIntensity > background + ALIGNMENT_S_N_CUTOFF * noise:
                         timePairs.append((i[1],peakTime))
                     else:
                         if self.log == True:
@@ -1528,9 +1528,23 @@ class App():
                 x_points.append(j[0])
                 y_points.append(j[1])
             newX = numpy.linspace(x_points[0],x_points[-1],2500*(x_points[-1]-x_points[0]))
-            f = InterpolatedUnivariateSpline(x_points,y_points)
-            ySPLINE = f(newX)
             maximum = (newX[int(len(newX)/2)],0)
+            try:
+                f = InterpolatedUnivariateSpline(x_points,y_points)
+                ySPLINE = f(newX)
+                for index, j in enumerate(ySPLINE):
+                    if j > maximum[1]:
+                        maximum = (newX[index],j)
+            except ValueError:
+                data = zip(x_points,y_points)
+                if self.log == True:
+                    with open('LaCyTools.log', 'a') as flog:
+                        flog.write(str(datetime.now())+ "\tGuassian Curve Fit failed for analyte: "+str(i[0])+", reverting to non fitted local maximum\n")
+                for j in data:
+                    if j[1] > maximum[1]:
+                        maximum = (j[0],j[1])
+            except:
+                print "Analyte: "+str(i[0])+" is being troublesome, kill it"
             # Plot Code (for testing purposes)
             """fig =  plt.figure()
             ax = fig.add_subplot(111)
@@ -1543,9 +1557,6 @@ class App():
             #plt.legend(['Raw Data','Cubic Spline'], loc='best')
             plt.legend(['Raw Data','Interp1d','Univariate Spline'], loc='best')
             plt.show()"""
-            for index, j in enumerate(ySPLINE):
-                if j > maximum[1]:
-                    maximum = (newX[index],j)
             # Check if maxima above S/N cut-off
             values = self.getBackground(spectrum, maximum[0], charge, window)
             background,noise = values[0], values[2]
@@ -1726,6 +1737,8 @@ class App():
         OUTPUT: A summary file
         """
         total = []
+        ref = []
+        self.refParser(ref)
         for file in glob.glob(os.path.join(str(self.batchFolder),"*.raw")):
             compositions = []
             trigger = 0
@@ -1875,33 +1888,30 @@ class App():
                     # List of theoretical areas
                     fw.write("Fraction")
                     for i in compositions:
-                        sumInt = 0
-                        for j in total:
-                            if len(j[1]) == len(compositions):
-                                for k in j[1]:
-                                    if k.composition == i[0] and float(k.time) == float(i[1]):
-                                        for l in k.isotopes:
-                                            sumInt += l.expInt
-                                break
-                        fw.write("\t"+str(sumInt))
+                        sumInt = 0.      
+                        for j in ref:
+                            glycan = j[0].split("_")[0]
+                            charge = j[0].split("_")[1]
+                            isotope = j[0].split("_")[2]
+                            if str(glycan) == str(i[0]):
+                                sumInt += float(j[2])
+                        fw.write("\t")
+                        if sumInt > 0.:
+                            fw.write(str(sumInt))
                     fw.write("\n")
                     # List of monoisotopic masses
                     fw.write("Monoisotopic Mass")
                     for i in compositions:
                         masses = ""
-                        charge = 0
-                        for j in total:
-                            if len(j[1]) == len(compositions):
-                                for k in j[1]:
-                                    if k.composition == i[0] and float(k.time) == float(i[1]):
-                                        for l in k.isotopes:
-                                            if l.charge != charge:
-                                                charge = l.charge
-                                                if masses == "":
-                                                    masses ="["+str(l.mass)+"]"
-                                                else:
-                                                    masses += " ["+str(l.mass)+"]"
-                                break
+                        for j in ref:
+                            glycan = j[0].split("_")[0]
+                            charge = j[0].split("_")[1]
+                            isotope = j[0].split("_")[2]
+                            if str(glycan) == str(i[0]) and int(isotope) == 0:
+                                if masses == "":
+                                    masses ="["+str(j[1])+"]"
+                                else:
+                                    masses += " ["+str(j[1])+"]"
                         fw.write("\t"+masses)
                     fw.write("\n")
                     # Actual data
@@ -1948,32 +1958,33 @@ class App():
                         for j in compositions:
                             fw.write("\t"+str(j[0]))
                         fw.write("\n")
-                        # List of theoretical areas (not being correct?)
+                        # List of theoretical areas
                         fw.write("Fraction")
                         for j in compositions:
-                            sumInt = 0
-                            for k in total:
-                                if len(k[1]) == len(compositions):
-                                    for l in k[1]:
-                                        if l.composition == j[0] and float(l.time) == float(j[1]):
-                                            for m in l.isotopes:
-                                                if int(m.charge) == i:
-                                                    sumInt += m.expInt
-                                    break
-                            fw.write("\t"+str(sumInt))
+                            sumInt = 0.      
+                            for k in ref:
+                                glycan = k[0].split("_")[0]
+                                charge = k[0].split("_")[1]
+                                isotope = k[0].split("_")[2]
+                                if str(glycan) == str(j[0]) and int(charge) == int(i):
+                                    sumInt += float(k[2])
+                            fw.write("\t")
+                            if sumInt > 0.:
+                                fw.write(str(sumInt))
                         fw.write("\n")
                         # List of monoisotopic masses
                         fw.write("Monoisotopic Mass")
                         for j in compositions:
                             masses = ""
-                            for k in total:
-                                if len(k[1]) == len(compositions):
-                                    for l in k[1]:
-                                        if l.composition == j[0] and float(l.time) == float(j[1]):
-                                            for m in l.isotopes:
-                                                if int(m.charge) == i:
-                                                    masses ="["+str(m.mass)+"]"
-                                                    break
+                            for k in ref:
+                                glycan = k[0].split("_")[0]
+                                charge = k[0].split("_")[1]
+                                isotope = k[0].split("_")[2]
+                                if str(glycan) == str(j[0]) and int(charge) == int(i) and int(isotope) == 0:
+                                    if masses == "":
+                                        masses ="["+str(k[1])+"]"
+                                    else:
+                                        masses += " ["+str(k[1])+"]"
                             fw.write("\t"+masses)
                         fw.write("\n")
                         # Actual data
@@ -2012,33 +2023,30 @@ class App():
                     # List of theoretical areas
                     fw.write("Fraction")
                     for i in compositions:
-                        sumInt = 0
-                        for j in total:
-                            if len(j[1]) == len(compositions):
-                                for k in j[1]:
-                                    if k.composition == i[0] and float(k.time) == float(i[1]):
-                                        for l in k.isotopes:
-                                            sumInt += l.expInt
-                                break
-                        fw.write("\t"+str(sumInt))
+                        sumInt = 0.      
+                        for j in ref:
+                            glycan = j[0].split("_")[0]
+                            charge = j[0].split("_")[1]
+                            isotope = j[0].split("_")[2]
+                            if str(glycan) == str(i[0]):
+                                sumInt += float(j[2])
+                        fw.write("\t")
+                        if sumInt > 0.:
+                            fw.write(str(sumInt))
                     fw.write("\n")
                     # List of monoisotopic masses
                     fw.write("Monoisotopic Mass")
                     for i in compositions:
                         masses = ""
-                        charge = 0
-                        for j in total:
-                            if len(j[1]) == len(compositions):
-                                for k in j[1]:
-                                    if k.composition == i[0] and float(k.time) == float(i[1]):
-                                        for l in k.isotopes:
-                                            if l.charge != charge:
-                                                charge = l.charge
-                                                if masses == "":
-                                                    masses ="["+str(l.mass)+"]"
-                                                else:
-                                                    masses += " ["+str(l.mass)+"]"
-                                break
+                        for j in ref:
+                            glycan = j[0].split("_")[0]
+                            charge = j[0].split("_")[1]
+                            isotope = j[0].split("_")[2]
+                            if str(glycan) == str(i[0]) and int(isotope) == 0:
+                                if masses == "":
+                                    masses ="["+str(j[1])+"]"
+                                else:
+                                    masses += " ["+str(j[1])+"]"
                         fw.write("\t"+masses)
                     fw.write("\n")
                     # Actual data
@@ -2085,32 +2093,33 @@ class App():
                         for j in compositions:
                             fw.write("\t"+str(j[0]))
                         fw.write("\n")
-                        # List of theoretical areas (not being correct?)
+                        # List of theoretical areas
                         fw.write("Fraction")
                         for j in compositions:
-                            sumInt = 0
-                            for k in total:
-                                if len(k[1]) == len(compositions):
-                                    for l in k[1]:
-                                        if l.composition == j[0] and float(l.time) == float(j[1]):
-                                            for m in l.isotopes:
-                                                if int(m.charge) == i:
-                                                    sumInt += m.expInt
-                                    break
-                            fw.write("\t"+str(sumInt))
+                            sumInt = 0.      
+                            for k in ref:
+                                glycan = k[0].split("_")[0]
+                                charge = k[0].split("_")[1]
+                                isotope = k[0].split("_")[2]
+                                if str(glycan) == str(j[0]) and int(charge) == int(i):
+                                    sumInt += float(k[2])
+                            fw.write("\t")
+                            if sumInt > 0.:
+                                fw.write(str(sumInt))
                         fw.write("\n")
                         # List of monoisotopic masses
                         fw.write("Monoisotopic Mass")
                         for j in compositions:
                             masses = ""
-                            for k in total:
-                                if len(k[1]) == len(compositions):
-                                    for l in k[1]:
-                                        if l.composition == j[0] and float(l.time) == float(j[1]):
-                                            for m in l.isotopes:
-                                                if int(m.charge) == i:
-                                                    masses ="["+str(m.mass)+"]"
-                                                    break
+                            for k in ref:
+                                glycan = k[0].split("_")[0]
+                                charge = k[0].split("_")[1]
+                                isotope = k[0].split("_")[2]
+                                if str(glycan) == str(j[0]) and int(charge) == int(i) and int(isotope) == 0:
+                                    if masses == "":
+                                        masses ="["+str(k[1])+"]"
+                                    else:
+                                        masses += " ["+str(k[1])+"]"
                             fw.write("\t"+masses)
                         fw.write("\n")
                         # Actual data
@@ -2149,33 +2158,30 @@ class App():
                     # List of theoretical areas
                     fw.write("Fraction")
                     for i in compositions:
-                        sumInt = 0
-                        for j in total:
-                            if len(j[1]) == len(compositions):
-                                for k in j[1]:
-                                    if k.composition == i[0] and float(k.time) == float(i[1]):
-                                        for l in k.isotopes:
-                                            sumInt += l.expInt
-                                break
-                        fw.write("\t"+str(sumInt))
+                        sumInt = 0.      
+                        for j in ref:
+                            glycan = j[0].split("_")[0]
+                            charge = j[0].split("_")[1]
+                            isotope = j[0].split("_")[2]
+                            if str(glycan) == str(i[0]):
+                                sumInt += float(j[2])
+                        fw.write("\t")
+                        if sumInt > 0.:
+                            fw.write(str(sumInt))
                     fw.write("\n")
                     # List of monoisotopic masses
                     fw.write("Monoisotopic Mass")
                     for i in compositions:
                         masses = ""
-                        charge = 0
-                        for j in total:
-                            if len(j[1]) == len(compositions):
-                                for k in j[1]:
-                                    if k.composition == i[0] and float(k.time) == float(i[1]):
-                                        for l in k.isotopes:
-                                            if l.charge != charge:
-                                                charge = l.charge
-                                                if masses == "":
-                                                    masses ="["+str(l.mass)+"]"
-                                                else:
-                                                    masses += " ["+str(l.mass)+"]"
-                                break
+                        for j in ref:
+                            glycan = j[0].split("_")[0]
+                            charge = j[0].split("_")[1]
+                            isotope = j[0].split("_")[2]
+                            if str(glycan) == str(i[0]) and int(isotope) == 0:
+                                if masses == "":
+                                    masses ="["+str(j[1])+"]"
+                                else:
+                                    masses += " ["+str(j[1])+"]"
                         fw.write("\t"+masses)
                     fw.write("\n")
                     # Actual data
@@ -2231,32 +2237,33 @@ class App():
                         for j in compositions:
                             fw.write("\t"+str(j[0]))
                         fw.write("\n")
-                        # List of theoretical areas (not being correct?)
+                        # List of theoretical areas
                         fw.write("Fraction")
                         for j in compositions:
-                            sumInt = 0
-                            for k in total:
-                                if len(k[1]) == len(compositions):
-                                    for l in k[1]:
-                                        if l.composition == j[0] and float(l.time) == float(j[1]):
-                                            for m in l.isotopes:
-                                                if int(m.charge) == i:
-                                                    sumInt += m.expInt
-                                    break
-                            fw.write("\t"+str(sumInt))
+                            sumInt = 0.      
+                            for k in ref:
+                                glycan = k[0].split("_")[0]
+                                charge = k[0].split("_")[1]
+                                isotope = k[0].split("_")[2]
+                                if str(glycan) == str(j[0]) and int(charge) == int(i):
+                                    sumInt += float(k[2])
+                            fw.write("\t")
+                            if sumInt > 0.:
+                                fw.write(str(sumInt))
                         fw.write("\n")
                         # List of monoisotopic masses
                         fw.write("Monoisotopic Mass")
                         for j in compositions:
                             masses = ""
-                            for k in total:
-                                if len(k[1]) == len(compositions):
-                                    for l in k[1]:
-                                        if l.composition == j[0] and float(l.time) == float(j[1]):
-                                            for m in l.isotopes:
-                                                if int(m.charge) == i:
-                                                    masses ="["+str(m.mass)+"]"
-                                                    break
+                            for k in ref:
+                                glycan = k[0].split("_")[0]
+                                charge = k[0].split("_")[1]
+                                isotope = k[0].split("_")[2]
+                                if str(glycan) == str(j[0]) and int(charge) == int(i) and int(isotope) == 0:
+                                    if masses == "":
+                                        masses ="["+str(k[1])+"]"
+                                    else:
+                                        masses += " ["+str(k[1])+"]"
                             fw.write("\t"+masses)
                         fw.write("\n")
                         # Actual data
@@ -2305,33 +2312,30 @@ class App():
                     # List of theoretical areas
                     fw.write("Fraction")
                     for i in compositions:
-                        sumInt = 0
-                        for j in total:
-                            if len(j[1]) == len(compositions):
-                                for k in j[1]:
-                                    if k.composition == i[0] and float(k.time) == float(i[1]):
-                                        for l in k.isotopes:
-                                            sumInt += l.expInt
-                                break
-                        fw.write("\t"+str(sumInt))
+                        sumInt = 0.      
+                        for j in ref:
+                            glycan = j[0].split("_")[0]
+                            charge = j[0].split("_")[1]
+                            isotope = j[0].split("_")[2]
+                            if str(glycan) == str(i[0]):
+                                sumInt += float(j[2])
+                        fw.write("\t")
+                        if sumInt > 0.:
+                            fw.write(str(sumInt))
                     fw.write("\n")
                     # List of monoisotopic masses
                     fw.write("Monoisotopic Mass")
                     for i in compositions:
                         masses = ""
-                        charge = 0
-                        for j in total:
-                            if len(j[1]) == len(compositions):
-                                for k in j[1]:
-                                    if k.composition == i[0] and float(k.time) == float(i[1]):
-                                        for l in k.isotopes:
-                                            if l.charge != charge:
-                                                charge = l.charge
-                                                if masses == "":
-                                                    masses ="["+str(l.mass)+"]"
-                                                else:
-                                                    masses += " ["+str(l.mass)+"]"
-                                break
+                        for j in ref:
+                            glycan = j[0].split("_")[0]
+                            charge = j[0].split("_")[1]
+                            isotope = j[0].split("_")[2]
+                            if str(glycan) == str(i[0]) and int(isotope) == 0:
+                                if masses == "":
+                                    masses ="["+str(j[1])+"]"
+                                else:
+                                    masses += " ["+str(j[1])+"]"
                         fw.write("\t"+masses)
                     fw.write("\n")
                     # Actual Data
@@ -2397,32 +2401,33 @@ class App():
                         for j in compositions:
                             fw.write("\t"+str(j[0]))
                         fw.write("\n")
-                        # List of theoretical areas (not being correct?)
+                        # List of theoretical areas
                         fw.write("Fraction")
                         for j in compositions:
-                            sumInt = 0
-                            for k in total:
-                                if len(k[1]) == len(compositions):
-                                    for l in k[1]:
-                                        if l.composition == j[0] and float(l.time) == float(j[1]):
-                                            for m in l.isotopes:
-                                                if int(m.charge) == i:
-                                                    sumInt += m.expInt
-                                    break
-                            fw.write("\t"+str(sumInt))
+                            sumInt = 0.      
+                            for k in ref:
+                                glycan = k[0].split("_")[0]
+                                charge = k[0].split("_")[1]
+                                isotope = k[0].split("_")[2]
+                                if str(glycan) == str(j[0]) and int(charge) == int(i):
+                                    sumInt += float(k[2])
+                            fw.write("\t")
+                            if sumInt > 0.:
+                                fw.write(str(sumInt))
                         fw.write("\n")
                         # List of monoisotopic masses
                         fw.write("Monoisotopic Mass")
                         for j in compositions:
                             masses = ""
-                            for k in total:
-                                if len(k[1]) == len(compositions):
-                                    for l in k[1]:
-                                        if l.composition == j[0] and float(l.time) == float(j[1]):
-                                            for m in l.isotopes:
-                                                if int(m.charge) == i:
-                                                    masses ="["+str(m.mass)+"]"
-                                                    break
+                            for k in ref:
+                                glycan = k[0].split("_")[0]
+                                charge = k[0].split("_")[1]
+                                isotope = k[0].split("_")[2]
+                                if str(glycan) == str(j[0]) and int(charge) == int(i) and int(isotope) == 0:
+                                    if masses == "":
+                                        masses ="["+str(k[1])+"]"
+                                    else:
+                                        masses += " ["+str(k[1])+"]"
                             fw.write("\t"+masses)
                         fw.write("\n")
                         # Actual data
@@ -2481,33 +2486,30 @@ class App():
                     # List of theoretical areas
                     fw.write("Fraction")
                     for i in compositions:
-                        sumInt = 0
-                        for j in total:
-                            if len(j[1]) == len(compositions):
-                                for k in j[1]:
-                                    if k.composition == i[0] and float(k.time) == float(i[1]):
-                                        for l in k.isotopes:
-                                            sumInt += l.expInt
-                                break
-                        fw.write("\t"+str(sumInt))
+                        sumInt = 0.      
+                        for j in ref:
+                            glycan = j[0].split("_")[0]
+                            charge = j[0].split("_")[1]
+                            isotope = j[0].split("_")[2]
+                            if str(glycan) == str(i[0]):
+                                sumInt += float(j[2])
+                        fw.write("\t")
+                        if sumInt > 0.:
+                            fw.write(str(sumInt))
                     fw.write("\n")
                     # List of monoisotopic masses
                     fw.write("Monoisotopic Mass")
                     for i in compositions:
                         masses = ""
-                        charge = 0
-                        for j in total:
-                            if len(j[1]) == len(compositions):
-                                for k in j[1]:
-                                    if k.composition == i[0] and float(k.time) == float(i[1]):
-                                        for l in k.isotopes:
-                                            if l.charge != charge:
-                                                charge = l.charge
-                                                if masses == "":
-                                                    masses ="["+str(l.mass)+"]"
-                                                else:
-                                                    masses += " ["+str(l.mass)+"]"
-                                break
+                        for j in ref:
+                            glycan = j[0].split("_")[0]
+                            charge = j[0].split("_")[1]
+                            isotope = j[0].split("_")[2]
+                            if str(glycan) == str(i[0]) and int(isotope) == 0:
+                                if masses == "":
+                                    masses ="["+str(j[1])+"]"
+                                else:
+                                    masses += " ["+str(j[1])+"]"
                         fw.write("\t"+masses)
                     fw.write("\n")
                     # Actual data
@@ -2563,32 +2565,33 @@ class App():
                         for j in compositions:
                             fw.write("\t"+str(j[0]))
                         fw.write("\n")
-                        # List of theoretical areas (not being correct?)
+                        # List of theoretical areas
                         fw.write("Fraction")
                         for j in compositions:
-                            sumInt = 0
-                            for k in total:
-                                if len(k[1]) == len(compositions):
-                                    for l in k[1]:
-                                        if l.composition == j[0] and float(l.time) == float(j[1]):
-                                            for m in l.isotopes:
-                                                if int(m.charge) == i:
-                                                    sumInt += m.expInt
-                                    break
-                            fw.write("\t"+str(sumInt))
+                            sumInt = 0.      
+                            for k in ref:
+                                glycan = k[0].split("_")[0]
+                                charge = k[0].split("_")[1]
+                                isotope = k[0].split("_")[2]
+                                if str(glycan) == str(j[0]) and int(charge) == int(i):
+                                    sumInt += float(k[2])
+                            fw.write("\t")
+                            if sumInt > 0.:
+                                fw.write(str(sumInt))
                         fw.write("\n")
                         # List of monoisotopic masses
                         fw.write("Monoisotopic Mass")
                         for j in compositions:
                             masses = ""
-                            for k in total:
-                                if len(k[1]) == len(compositions):
-                                    for l in k[1]:
-                                        if l.composition == j[0] and float(l.time) == float(j[1]):
-                                            for m in l.isotopes:
-                                                if int(m.charge) == i:
-                                                    masses ="["+str(m.mass)+"]"
-                                                    break
+                            for k in ref:
+                                glycan = k[0].split("_")[0]
+                                charge = k[0].split("_")[1]
+                                isotope = k[0].split("_")[2]
+                                if str(glycan) == str(j[0]) and int(charge) == int(i) and int(isotope) == 0:
+                                    if masses == "":
+                                        masses ="["+str(k[1])+"]"
+                                    else:
+                                        masses += " ["+str(k[1])+"]"
                             fw.write("\t"+masses)
                         fw.write("\n")
                         # Actual data
@@ -2637,33 +2640,30 @@ class App():
                     # List of theoretical areas
                     fw.write("Fraction")
                     for i in compositions:
-                        sumInt = 0
-                        for j in total:
-                            if len(j[1]) == len(compositions):
-                                for k in j[1]:
-                                    if k.composition == i[0] and float(k.time) == float(i[1]):
-                                        for l in k.isotopes:
-                                            sumInt += l.expInt
-                                break
-                        fw.write("\t"+str(sumInt))
+                        sumInt = 0.      
+                        for j in ref:
+                            glycan = j[0].split("_")[0]
+                            charge = j[0].split("_")[1]
+                            isotope = j[0].split("_")[2]
+                            if str(glycan) == str(i[0]):
+                                sumInt += float(j[2])
+                        fw.write("\t")
+                        if sumInt > 0.:
+                            fw.write(str(sumInt))
                     fw.write("\n")
                     # List of monoisotopic masses
                     fw.write("Monoisotopic Mass")
                     for i in compositions:
                         masses = ""
-                        charge = 0
-                        for j in total:
-                            if len(j[1]) == len(compositions):
-                                for k in j[1]:
-                                    if k.composition == i[0] and float(k.time) == float(i[1]):
-                                        for l in k.isotopes:
-                                            if l.charge != charge:
-                                                charge = l.charge
-                                                if masses == "":
-                                                    masses ="["+str(l.mass)+"]"
-                                                else:
-                                                    masses += " ["+str(l.mass)+"]"
-                                break
+                        for j in ref:
+                            glycan = j[0].split("_")[0]
+                            charge = j[0].split("_")[1]
+                            isotope = j[0].split("_")[2]
+                            if str(glycan) == str(i[0]) and int(isotope) == 0:
+                                if masses == "":
+                                    masses ="["+str(j[1])+"]"
+                                else:
+                                    masses += " ["+str(j[1])+"]"
                         fw.write("\t"+masses)
                     fw.write("\n")
                     # Actual Data
@@ -2729,32 +2729,33 @@ class App():
                         for j in compositions:
                             fw.write("\t"+str(j[0]))
                         fw.write("\n")
-                        # List of theoretical areas (not being correct?)
+                        # List of theoretical areas
                         fw.write("Fraction")
                         for j in compositions:
-                            sumInt = 0
-                            for k in total:
-                                if len(k[1]) == len(compositions):
-                                    for l in k[1]:
-                                        if l.composition == j[0] and float(l.time) == float(j[1]):
-                                            for m in l.isotopes:
-                                                if int(m.charge) == i:
-                                                    sumInt += m.expInt
-                                    break
-                            fw.write("\t"+str(sumInt))
+                            sumInt = 0.      
+                            for k in ref:
+                                glycan = k[0].split("_")[0]
+                                charge = k[0].split("_")[1]
+                                isotope = k[0].split("_")[2]
+                                if str(glycan) == str(j[0]) and int(charge) == int(i):
+                                    sumInt += float(k[2])
+                            fw.write("\t")
+                            if sumInt > 0.:
+                                fw.write(str(sumInt))
                         fw.write("\n")
                         # List of monoisotopic masses
                         fw.write("Monoisotopic Mass")
                         for j in compositions:
                             masses = ""
-                            for k in total:
-                                if len(k[1]) == len(compositions):
-                                    for l in k[1]:
-                                        if l.composition == j[0] and float(l.time) == float(j[1]):
-                                            for m in l.isotopes:
-                                                if int(m.charge) == i:
-                                                    masses ="["+str(m.mass)+"]"
-                                                    break
+                            for k in ref:
+                                glycan = k[0].split("_")[0]
+                                charge = k[0].split("_")[1]
+                                isotope = k[0].split("_")[2]
+                                if str(glycan) == str(j[0]) and int(charge) == int(i) and int(isotope) == 0:
+                                    if masses == "":
+                                        masses ="["+str(k[1])+"]"
+                                    else:
+                                        masses += " ["+str(k[1])+"]"
                             fw.write("\t"+masses)
                         fw.write("\n")
                         # Actual data
@@ -2798,7 +2799,6 @@ class App():
                         fw.write("\n")
 
 
-
             ################################
             # Analyte Background Intensity #
             ################################
@@ -2815,33 +2815,30 @@ class App():
                     # List of theoretical areas
                     fw.write("Fraction")
                     for i in compositions:
-                        sumInt = 0
-                        for j in total:
-                            if len(j[1]) == len(compositions):
-                                for k in j[1]:
-                                    if k.composition == i[0] and float(k.time) == float(i[1]):
-                                        for l in k.isotopes:
-                                            sumInt += l.expInt
-                                break
-                        fw.write("\t"+str(sumInt))
+                        sumInt = 0.      
+                        for j in ref:
+                            glycan = j[0].split("_")[0]
+                            charge = j[0].split("_")[1]
+                            isotope = j[0].split("_")[2]
+                            if str(glycan) == str(i[0]):
+                                sumInt += float(j[2])
+                        fw.write("\t")
+                        if sumInt > 0.:
+                            fw.write(str(sumInt))
                     fw.write("\n")
                     # List of monoisotopic masses
                     fw.write("Monoisotopic Mass")
                     for i in compositions:
                         masses = ""
-                        charge = 0
-                        for j in total:
-                            if len(j[1]) == len(compositions):
-                                for k in j[1]:
-                                    if k.composition == i[0] and float(k.time) == float(i[1]):
-                                        for l in k.isotopes:
-                                            if l.charge != charge:
-                                                charge = l.charge
-                                                if masses == "":
-                                                    masses ="["+str(l.mass)+"]"
-                                                else:
-                                                    masses += " ["+str(l.mass)+"]"
-                                break
+                        for j in ref:
+                            glycan = j[0].split("_")[0]
+                            charge = j[0].split("_")[1]
+                            isotope = j[0].split("_")[2]
+                            if str(glycan) == str(i[0]) and int(isotope) == 0:
+                                if masses == "":
+                                    masses ="["+str(j[1])+"]"
+                                else:
+                                    masses += " ["+str(j[1])+"]"
                         fw.write("\t"+masses)
                     fw.write("\n")
                     # Actual data
@@ -2885,32 +2882,33 @@ class App():
                         for j in compositions:
                             fw.write("\t"+str(j[0]))
                         fw.write("\n")
-                        # List of theoretical areas (not being correct?)
+                        # List of theoretical areas
                         fw.write("Fraction")
                         for j in compositions:
-                            sumInt = 0
-                            for k in total:
-                                if len(k[1]) == len(compositions):
-                                    for l in k[1]:
-                                        if l.composition == j[0] and float(l.time) == float(j[1]):
-                                            for m in l.isotopes:
-                                                if int(m.charge) == i:
-                                                    sumInt += m.expInt
-                                    break
-                            fw.write("\t"+str(sumInt))
+                            sumInt = 0.      
+                            for k in ref:
+                                glycan = k[0].split("_")[0]
+                                charge = k[0].split("_")[1]
+                                isotope = k[0].split("_")[2]
+                                if str(glycan) == str(j[0]) and int(charge) == int(i):
+                                    sumInt += float(k[2])
+                            fw.write("\t")
+                            if sumInt > 0.:
+                                fw.write(str(sumInt))
                         fw.write("\n")
                         # List of monoisotopic masses
                         fw.write("Monoisotopic Mass")
                         for j in compositions:
                             masses = ""
-                            for k in total:
-                                if len(k[1]) == len(compositions):
-                                    for l in k[1]:
-                                        if l.composition == j[0] and float(l.time) == float(j[1]):
-                                            for m in l.isotopes:
-                                                if int(m.charge) == i:
-                                                    masses ="["+str(m.mass)+"]"
-                                                    break
+                            for k in ref:
+                                glycan = k[0].split("_")[0]
+                                charge = k[0].split("_")[1]
+                                isotope = k[0].split("_")[2]
+                                if str(glycan) == str(j[0]) and int(charge) == int(i) and int(isotope) == 0:
+                                    if masses == "":
+                                        masses ="["+str(k[1])+"]"
+                                    else:
+                                        masses += " ["+str(k[1])+"]"
                             fw.write("\t"+masses)
                         fw.write("\n")
                         # Actual data
@@ -2947,33 +2945,30 @@ class App():
                     # List of theoretical areas
                     fw.write("Fraction")
                     for i in compositions:
-                        sumInt = 0
-                        for j in total:
-                            if len(j[1]) == len(compositions):
-                                for k in j[1]:
-                                    if k.composition == i[0] and float(k.time) == float(i[1]):
-                                        for l in k.isotopes:
-                                            sumInt += l.expInt
-                                break
-                        fw.write("\t"+str(sumInt))
+                        sumInt = 0.      
+                        for j in ref:
+                            glycan = j[0].split("_")[0]
+                            charge = j[0].split("_")[1]
+                            isotope = j[0].split("_")[2]
+                            if str(glycan) == str(i[0]):
+                                sumInt += float(j[2])
+                        fw.write("\t")
+                        if sumInt > 0.:
+                            fw.write(str(sumInt))
                     fw.write("\n")
                     # List of monoisotopic masses
                     fw.write("Monoisotopic Mass")
                     for i in compositions:
                         masses = ""
-                        charge = 0
-                        for j in total:
-                            if len(j[1]) == len(compositions):
-                                for k in j[1]:
-                                    if k.composition == i[0] and float(k.time) == float(i[1]):
-                                        for l in k.isotopes:
-                                            if l.charge != charge:
-                                                charge = l.charge
-                                                if masses == "":
-                                                    masses ="["+str(l.mass)+"]"
-                                                else:
-                                                    masses += " ["+str(l.mass)+"]"
-                                break
+                        for j in ref:
+                            glycan = j[0].split("_")[0]
+                            charge = j[0].split("_")[1]
+                            isotope = j[0].split("_")[2]
+                            if str(glycan) == str(i[0]) and int(isotope) == 0:
+                                if masses == "":
+                                    masses ="["+str(j[1])+"]"
+                                else:
+                                    masses += " ["+str(j[1])+"]"
                         fw.write("\t"+masses)
                     fw.write("\n")
                     # Actual data
@@ -3017,32 +3012,33 @@ class App():
                         for j in compositions:
                             fw.write("\t"+str(j[0]))
                         fw.write("\n")
-                        # List of theoretical areas (not being correct?)
+                        # List of theoretical areas
                         fw.write("Fraction")
                         for j in compositions:
-                            sumInt = 0
-                            for k in total:
-                                if len(k[1]) == len(compositions):
-                                    for l in k[1]:
-                                        if l.composition == j[0] and float(l.time) == float(j[1]):
-                                            for m in l.isotopes:
-                                                if int(m.charge) == i:
-                                                    sumInt += m.expInt
-                                    break
-                            fw.write("\t"+str(sumInt))
+                            sumInt = 0.      
+                            for k in ref:
+                                glycan = k[0].split("_")[0]
+                                charge = k[0].split("_")[1]
+                                isotope = k[0].split("_")[2]
+                                if str(glycan) == str(j[0]) and int(charge) == int(i):
+                                    sumInt += float(k[2])
+                            fw.write("\t")
+                            if sumInt > 0.:
+                                fw.write(str(sumInt))
                         fw.write("\n")
                         # List of monoisotopic masses
                         fw.write("Monoisotopic Mass")
                         for j in compositions:
                             masses = ""
-                            for k in total:
-                                if len(k[1]) == len(compositions):
-                                    for l in k[1]:
-                                        if l.composition == j[0] and float(l.time) == float(j[1]):
-                                            for m in l.isotopes:
-                                                if int(m.charge) == i:
-                                                    masses ="["+str(m.mass)+"]"
-                                                    break
+                            for k in ref:
+                                glycan = k[0].split("_")[0]
+                                charge = k[0].split("_")[1]
+                                isotope = k[0].split("_")[2]
+                                if str(glycan) == str(j[0]) and int(charge) == int(i) and int(isotope) == 0:
+                                    if masses == "":
+                                        masses ="["+str(k[1])+"]"
+                                    else:
+                                        masses += " ["+str(k[1])+"]"
                             fw.write("\t"+masses)
                         fw.write("\n")
                         # Actual data
@@ -3128,29 +3124,30 @@ class App():
                     # List of theoretical areas
                     fw.write("Fraction")
                     for j in compositions:
-                        sumInt = 0
-                        for k in total:
-                            if len(k[1]) == len(compositions):
-                                for l in k[1]:
-                                    if l.composition == j[0] and float(l.time) == float(j[1]):
-                                        for m in l.isotopes:
-                                            if int(m.charge) == i:
-                                                sumInt += m.expInt
-                                break
-                        fw.write("\t"+str(sumInt))
+                        sumInt = 0.      
+                        for k in ref:
+                            glycan = k[0].split("_")[0]
+                            charge = k[0].split("_")[1]
+                            isotope = k[0].split("_")[2]
+                            if str(glycan) == str(j[0]) and int(charge) == int(i):
+                                sumInt += float(k[2])
+                        fw.write("\t")
+                        if sumInt > 0.:
+                            fw.write(str(sumInt))
                     fw.write("\n")
                     # List of monoisotopic masses
                     fw.write("Monoisotopic Mass")
                     for j in compositions:
                         masses = ""
-                        for k in total:
-                            if len(k[1]) == len(compositions):
-                                for l in k[1]:
-                                    if l.composition == j[0] and float(l.time) == float(j[1]):
-                                        for m in l.isotopes:
-                                            if int(m.charge) == i:
-                                                masses ="["+str(m.mass)+"]"
-                                                break
+                        for k in ref:
+                            glycan = k[0].split("_")[0]
+                            charge = k[0].split("_")[1]
+                            isotope = k[0].split("_")[2]
+                            if str(glycan) == str(j[0]) and int(charge) == int(i) and int(isotope) == 0:
+                                if masses == "":
+                                    masses ="["+str(k[1])+"]"
+                                else:
+                                    masses += " ["+str(k[1])+"]"
                         fw.write("\t"+masses)
                     fw.write("\n")
                     # Actual Data
@@ -3203,32 +3200,33 @@ class App():
                     for j in compositions:
                         fw.write("\t"+str(j[0]))
                     fw.write("\n")
-                    # List of theoretical areas (not being correct?)
+                    # List of theoretical areas
                     fw.write("Fraction")
                     for j in compositions:
-                        sumInt = 0
-                        for k in total:
-                            if len(k[1]) == len(compositions):
-                                for l in k[1]:
-                                    if l.composition == j[0] and float(l.time) == float(j[1]):
-                                        for m in l.isotopes:
-                                            if int(m.charge) == i:
-                                                sumInt += m.expInt
-                                break
-                        fw.write("\t"+str(sumInt))
+                        sumInt = 0.      
+                        for k in ref:
+                            glycan = k[0].split("_")[0]
+                            charge = k[0].split("_")[1]
+                            isotope = k[0].split("_")[2]
+                            if str(glycan) == str(j[0]) and int(charge) == int(i):
+                                sumInt += float(k[2])
+                        fw.write("\t")
+                        if sumInt > 0.:
+                            fw.write(str(sumInt))
                     fw.write("\n")
                     # List of monoisotopic masses
                     fw.write("Monoisotopic Mass")
                     for j in compositions:
                         masses = ""
-                        for k in total:
-                            if len(k[1]) == len(compositions):
-                                for l in k[1]:
-                                    if l.composition == j[0] and float(l.time) == float(j[1]):
-                                        for m in l.isotopes:
-                                            if int(m.charge) == i:
-                                                masses ="["+str(m.mass)+"]"
-                                                break
+                        for k in ref:
+                            glycan = k[0].split("_")[0]
+                            charge = k[0].split("_")[1]
+                            isotope = k[0].split("_")[2]
+                            if str(glycan) == str(j[0]) and int(charge) == int(i) and int(isotope) == 0:
+                                if masses == "":
+                                    masses ="["+str(k[1])+"]"
+                                else:
+                                    masses += " ["+str(k[1])+"]"
                         fw.write("\t"+masses)
                     fw.write("\n")
                     # Actual data
@@ -3286,32 +3284,33 @@ class App():
                     for j in compositions:
                         fw.write("\t"+str(j[0]))
                     fw.write("\n")
-                    # List of theoretical areas (not being correct?)
+                    # List of theoretical areas
                     fw.write("Fraction")
                     for j in compositions:
-                        sumInt = 0
-                        for k in total:
-                            if len(k[1]) == len(compositions):
-                                for l in k[1]:
-                                    if l.composition == j[0] and float(l.time) == float(j[1]):
-                                        for m in l.isotopes:
-                                            if int(m.charge) == i:
-                                                sumInt += m.expInt
-                                break
-                        fw.write("\t"+str(sumInt))
+                        sumInt = 0.      
+                        for k in ref:
+                            glycan = k[0].split("_")[0]
+                            charge = k[0].split("_")[1]
+                            isotope = k[0].split("_")[2]
+                            if str(glycan) == str(j[0]) and int(charge) == int(i):
+                                sumInt += float(k[2])
+                        fw.write("\t")
+                        if sumInt > 0.:
+                            fw.write(str(sumInt))
                     fw.write("\n")
                     # List of monoisotopic masses
                     fw.write("Monoisotopic Mass")
                     for j in compositions:
                         masses = ""
-                        for k in total:
-                            if len(k[1]) == len(compositions):
-                                for l in k[1]:
-                                    if l.composition == j[0] and float(l.time) == float(j[1]):
-                                        for m in l.isotopes:
-                                            if int(m.charge) == i:
-                                                masses ="["+str(m.mass)+"]"
-                                                break
+                        for k in ref:
+                            glycan = k[0].split("_")[0]
+                            charge = k[0].split("_")[1]
+                            isotope = k[0].split("_")[2]
+                            if str(glycan) == str(j[0]) and int(charge) == int(i) and int(isotope) == 0:
+                                if masses == "":
+                                    masses ="["+str(k[1])+"]"
+                                else:
+                                    masses += " ["+str(k[1])+"]"
                         fw.write("\t"+masses)
                     fw.write("\n")
                     # Actual data
@@ -3513,7 +3512,7 @@ class App():
             master.analyteNoise.set(0)
             master.analytePerCharge.set(0)
             master.analyteBckSub.set(0)
-            master.normalize.Cluster.set(0)
+            master.normalizeCluster.set(0)
             master.alignmentQC.set(0)
             master.qualityControl.set(0)
             master.ppmQC.set(0)
