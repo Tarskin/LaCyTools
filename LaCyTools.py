@@ -551,7 +551,7 @@ class App():
         # VARIABLES
         self.master = master
         self.version = "1.0.1"
-        self.build = "6"
+        self.build = "7"
         self.inputFile = ""
         self.inputFileIdx = 0
         self.refFile = ""
@@ -2347,6 +2347,7 @@ class App():
                                 if currentCluster not in clusters:
                                     clusters.append(currentCluster)
                     for i in total:
+                        clusterValues = []
                         fw.write(str(i[0]))
                         for j in clusters:
                             clusterTime = float(j.split("-")[0])
@@ -2360,19 +2361,25 @@ class App():
                                                 totalIntensity += m.obsInt
                                     except AttributeError:
                                         pass
-                            for k in compositions:
-                                sumInt = 0
-                                for l in i[1]:
+                            clusterValues.append((clusterTime, clusterWindow, totalIntensity))
+                        for j in compositions:
+                            flag = 0
+                            sumInt = 0
+                            for k in i[1]:
+                                for l in clusterValues:
                                     try:
-                                        if l.composition == k[0] and float(l.time) == clusterTime and float(l.timeWindow) == clusterWindow:
-                                            for m in l.isotopes:
+                                        if k.composition == j[0] and float(k.time) == l[0] and float(k.timeWindow) == l[1]:
+                                            flag = 1
+                                            for m in k.isotopes:                                             
                                                 sumInt += m.obsInt
                                             if sumInt > 0:
-                                                fw.write("\t"+str(float(sumInt)/float(totalIntensity)))
+                                                fw.write("\t"+str(float(sumInt)/float(l[2])))
                                             else:
                                                 fw.write("\t")
                                     except AttributeError:
-                                        pass
+                                            pass
+                            if flag == 0:
+                                fw.write("\t")
                         fw.write("\n")
                     fw.write("\n")
 
@@ -2439,6 +2446,7 @@ class App():
                                     if currentCluster not in clusters:
                                         clusters.append(currentCluster)
                         for j in total:
+                            clusterValues = []
                             fw.write(str(j[0]))
                             for k in clusters:
                                 clusterTime = float(k.split("-")[0])
@@ -2453,20 +2461,26 @@ class App():
                                                         totalIntensity += n.obsInt
                                         except AttributeError:
                                             pass
-                                for l in compositions:
-                                    sumInt = 0
-                                    for m in j[1]:
+                                clusterValues.append((clusterTime, clusterWindow, totalIntensity))   
+                            for k in compositions:
+                                flag = 0
+                                sumInt = 0
+                                for l in j[1]:
+                                    for m in clusterValues:
                                         try:
-                                            if m.composition == l[0] and float(m.time) == clusterTime and float(m.timeWindow) == clusterWindow:
-                                                for n in m.isotopes:
+                                            if l.composition == k[0] and float(l.time) == m[0] and float(l.timeWindow) == m[1]:
+                                                flag = 1
+                                                for n in l.isotopes:
                                                     if int(n.charge) == i:
                                                         sumInt += n.obsInt
                                                 if sumInt > 0:
-                                                    fw.write("\t"+str(float(sumInt)/float(totalIntensity)))                                        
+                                                    fw.write("\t"+str(float(sumInt)/float(m[2])))
                                                 else:
                                                     fw.write("\t")
                                         except AttributeError:
-                                            pass
+                                                pass
+                                if flag == 0:
+                                    fw.write("\t")
                             fw.write("\n")
                         fw.write("\n")
 
@@ -2676,6 +2690,7 @@ class App():
                                     clusters.append(currentCluster)
                     for i in total:
                         fw.write(str(i[0]))
+                        clusterValues = []
                         for j in clusters:
                             clusterTime = float(j.split("-")[0])
                             clusterWindow = float(j.split("-")[1])
@@ -2688,19 +2703,25 @@ class App():
                                                 totalIntensity += max(0, m.obsInt - m.background)
                                     except AttributeError:
                                         pass
-                            for k in compositions:
-                                sumInt = 0
-                                for l in i[1]:
+                            clusterValues.append((clusterTime, clusterWindow, totalIntensity))
+                        for j in compositions:
+                            flag = 0
+                            sumInt = 0
+                            for k in i[1]:
+                                for l in clusterValues:
                                     try:
-                                        if l.composition == k[0] and float(l.time) == clusterTime and float(l.timeWindow) == clusterWindow:
-                                            for m in l.isotopes:                                             
+                                        if k.composition == j[0] and float(k.time) == l[0] and float(k.timeWindow) == l[1]:
+                                            flag = 1
+                                            for m in k.isotopes:                                             
                                                 sumInt += max(0, m.obsInt - m.background)
                                             if sumInt > 0:
-                                                fw.write("\t"+str(float(sumInt)/float(totalIntensity)))
+                                                fw.write("\t"+str(float(sumInt)/float(l[2])))
                                             else:
                                                 fw.write("\t")
                                     except AttributeError:
-                                        pass
+                                            pass
+                            if flag == 0:
+                                fw.write("\t")
                         fw.write("\n")
                     fw.write("\n")
 
@@ -2767,6 +2788,7 @@ class App():
                                     if currentCluster not in clusters:
                                         clusters.append(currentCluster)
                         for j in total:
+                            clusterValues = []
                             fw.write(str(j[0]))
                             for k in clusters:
                                 clusterTime = float(k.split("-")[0])
@@ -2781,23 +2803,28 @@ class App():
                                                         totalIntensity += max(0, n.obsInt - n.background)
                                         except AttributeError:
                                             pass
-                                for l in compositions:
-                                    sumInt = 0
-                                    for m in j[1]:
+                                clusterValues.append((clusterTime, clusterWindow, totalIntensity))
+                            for k in compositions:
+                                flag = 0
+                                sumInt = 0
+                                for l in j[1]:
+                                    for m in clusterValues:
                                         try:
-                                            if m.composition == l[0] and float(m.time) == clusterTime and float(m.timeWindow) == clusterWindow:
-                                                for n in m.isotopes:
+                                            if l.composition == k[0] and float(l.time) == m[0] and float(l.timeWindow) == m[1]:
+                                                flag = 1
+                                                for n in l.isotopes:
                                                     if int(n.charge) == i:
                                                         sumInt += max(0, n.obsInt - n.background)
                                                 if sumInt > 0:
-                                                    fw.write("\t"+str(float(sumInt)/float(totalIntensity)))                                        
+                                                    fw.write("\t"+str(float(sumInt)/float(m[2])))
                                                 else:
                                                     fw.write("\t")
                                         except AttributeError:
-                                            pass
+                                                pass
+                                if flag == 0:
+                                    fw.write("\t")
                             fw.write("\n")
                         fw.write("\n")
-
 
             ################################
             # Analyte Background Intensity #
