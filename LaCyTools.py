@@ -361,33 +361,26 @@ BLOCKS = {  #######################
                     ##########################    
                     # Mouse Immunoglobulin G #
                     ##########################
-                    'MIgGI':{'mass':1138.5043368456,
+                    'MIgGI':{'mass':1156.514906,
                         'available_for_charge_carrier':0,
                         'carbons':50,
+                        'hydrogens':72,
+                        'nitrogens':14,
+                        'oxygens':18,
+                        'sulfurs':0},
+                    'MIgGII':{'mass':996.451243,
+                        'available_for_charge_carrier':0,
+                        'carbons':41,
+                        'hydrogens':64,
+                        'nitrogens':12,
+                        'oxygens':17,
+                        'sulfurs':0},
+                    'MIgGIII':{'mass':1114.504341,
+                        'available_for_charge_carrier':0,
+                        'carbons':48,
                         'hydrogens':70,
                         'nitrogens':14,
                         'oxygens':17,
-                        'sulfurs':0},
-                    'MIgGIS':{'mass':1104.5199869097,
-                        'available_for_charge_carrier':0,
-                        'carbons':47,
-                        'hydrogens':72,
-                        'nitrogens':14,
-                        'oxygens':17,
-                        'sulfurs':0},
-                    'MIgGII':{'mass':978.4406739597,
-                        'available_for_charge_carrier':0,
-                        'carbons':41,
-                        'hydrogens':62,
-                        'nitrogens':12,
-                        'oxygens':16,
-                        'sulfurs':0},
-                    'MIgGIII':{'mass':1096.4937721619,
-                        'available_for_charge_carrier':0,
-                        'carbons':48,
-                        'hydrogens':68,
-                        'nitrogens':14,
-                        'oxygens':16,
                         'sulfurs':0},
                     ####################
                     # Immunoglobulin A #
@@ -551,7 +544,7 @@ class App():
         # VARIABLES
         self.master = master
         self.version = "1.0.1"
-        self.build = "7"
+        self.build = "8"
         self.inputFile = ""
         self.inputFileIdx = 0
         self.refFile = ""
@@ -2343,9 +2336,12 @@ class App():
                     for i in total:
                         for j in compositions:
                             for k in i[1]:
-                                currentCluster = "-".join((k.time, k.timeWindow))
-                                if currentCluster not in clusters:
-                                    clusters.append(currentCluster)
+                                try:
+                                    currentCluster = "-".join((k.time, k.timeWindow))
+                                    if currentCluster not in clusters:
+                                        clusters.append(currentCluster)
+                                except AttributeError:
+                                    continue
                     for i in total:
                         clusterValues = []
                         fw.write(str(i[0]))
@@ -2442,9 +2438,12 @@ class App():
                         for j in total:
                             for k in compositions:
                                 for l in j[1]:
-                                    currentCluster = "-".join((l.time, l.timeWindow))
-                                    if currentCluster not in clusters:
-                                        clusters.append(currentCluster)
+                                    try:
+                                        currentCluster = "-".join((l.time, l.timeWindow))
+                                        if currentCluster not in clusters:
+                                            clusters.append(currentCluster)
+                                    except AttributeError:
+                                        continue
                         for j in total:
                             clusterValues = []
                             fw.write(str(j[0]))
@@ -2685,9 +2684,12 @@ class App():
                     for i in total:
                         for j in compositions:
                             for k in i[1]:
-                                currentCluster = "-".join((k.time, k.timeWindow))
-                                if currentCluster not in clusters:
-                                    clusters.append(currentCluster)
+                                try:
+                                    currentCluster = "-".join((k.time, k.timeWindow))
+                                    if currentCluster not in clusters:
+                                        clusters.append(currentCluster)
+                                except AttributeError:
+                                    continue
                     for i in total:
                         fw.write(str(i[0]))
                         clusterValues = []
@@ -2784,9 +2786,12 @@ class App():
                         for j in total:
                             for k in compositions:
                                 for l in j[1]:
-                                    currentCluster = "-".join((l.time, l.timeWindow))
-                                    if currentCluster not in clusters:
-                                        clusters.append(currentCluster)
+                                    try:
+                                        currentCluster = "-".join((l.time, l.timeWindow))
+                                        if currentCluster not in clusters:
+                                            clusters.append(currentCluster)
+                                    except AttributeError:
+                                        continue
                         for j in total:
                             clusterValues = []
                             fw.write(str(j[0]))
