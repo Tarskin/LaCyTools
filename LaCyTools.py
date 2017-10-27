@@ -544,7 +544,7 @@ class App():
         # VARIABLES
         self.master = master
         self.version = "1.0.1"
-        self.build = "9"
+        self.build = "20171027a"
         self.inputFile = ""
         self.inputFileIdx = 0
         self.refFile = ""
@@ -1354,10 +1354,14 @@ class App():
                             if self.log == True:
                                 with open('LaCyTools.log', 'a') as flog:
                                     flog.write(str(datetime.now())+ "\tUnable to calibrate the sum spectrum at "+str(i)+" seconds\n")
-                            outFile = os.path.split(str(self.inputFile))[1]
-                            outFile = outFile.split(".")[0]
-                            outFile = "Uncalibrated_sumSpectrum_"+str(i)+"_"+str(outFile)+".xy"
-                            outFile = os.path.join(str(self.batchFolder),outFile)
+                            # Adjust filename
+                            (old, new) = os.path.split(self.inputFile)
+                            old = os.path.abspath(old)
+                            new = os.path.splitext(new)[0]
+                            new = "Uncalibrated_sumSpectrum_"+str(i)+"_"+str(new)+".xy"
+                            new = os.path.join(old,new)
+                            outFile = "\\\\?\\"+new
+                            # Write
                             with open(outFile,'w') as fw:
                                 fw.write("\n".join(str(j[0])+"\t"+str(j[1]) for j in spectrum))
                             continue
@@ -1379,17 +1383,25 @@ class App():
                         for index,j in enumerate(newArray):
                             newSpectrum.append((j,intList[index]))
                         spectrum = newSpectrum
-                        outFile = os.path.split(str(self.inputFile))[1]
-                        outFile = outFile.split(".")[0]
-                        outFile = "Calibrated_sumSpectrum_"+str(i)+"_"+str(outFile)+".xy"
-                        outFile = os.path.join(str(self.batchFolder),outFile)
+                        # Adjust filename
+                        (old, new) = os.path.split(self.inputFile)
+                        old = os.path.abspath(old)
+                        new = os.path.splitext(new)[0]
+                        new = "sumSpectrum_"+str(i)+"_"+str(new)+".xy"
+                        new = os.path.join(old,new)
+                        outFile = "\\\\?\\"+new
+                        # Write
                         with open(outFile,'w') as fw:
                             fw.write("\n".join(str(j[0])+"\t"+str(j[1]) for j in spectrum))
                     else:
-                        outFile = os.path.split(str(self.inputFile))[1]
-                        outFile = outFile.split(".")[0]
-                        outFile = "sumSpectrum_"+str(i)+"_"+str(outFile)+".xy"
-                        outFile = os.path.join(str(self.batchFolder),outFile)
+                        # Adjust filename
+                        (old, new) = os.path.split(self.inputFile)
+                        old = os.path.abspath(old)
+                        new = os.path.splitext(new)[0]
+                        new = "sumSpectrum_"+str(i)+"_"+str(new)+".xy"
+                        new = os.path.join(old,new)
+                        outFile = "\\\\?\\"+new
+                        # Write
                         with open(outFile,'w') as fw:
                             fw.write("\n".join(str(j[0])+"\t"+str(j[1]) for j in spectrum))
                     self.extractData(chunks[i],spectrum,results)
@@ -1619,6 +1631,9 @@ class App():
                 # We ignore the data points at m/z edge, if they are important
                 # then the user should do a proper measurement.
                 pass
+        #from scipy.signal import savgol_filter
+        #new = savgol_filter(combinedSpectra,21,3)
+        #return new
         return combinedSpectra
 
     def findNearest(self,array,value):
