@@ -544,7 +544,7 @@ class App():
         # VARIABLES
         self.master = master
         self.version = "1.0.1"
-        self.build = "20180405b"
+        self.build = "20180405c"
         self.inputFile = ""
         self.inputFileIdx = 0
         self.refFile = ""
@@ -3147,6 +3147,41 @@ class App():
                         if flag == 0:
                             fw.write("\t")
                     fw.write("\t"+str(math.sqrt(RMS))+"\n")
+                fw.write("\n")
+
+            #####################################
+            # Alignment Features Retention Time #
+            #####################################
+            if self.alignmentQC.get() == 1:
+                # Get results
+                totalResults = []
+                for file in glob.glob(os.path.join(str(self.batchFolder),"*.alignment")):
+                    resultBuffer = []
+                    with open (file,'r') as fr:
+                        for line in fr:
+                            line = line.strip().split()
+                            resultBuffer.append(line)
+                    totalResults.append((file,resultBuffer))
+                # Header
+                header = []
+                for i in totalResults:
+                    if len(i[1]) > len(header):
+                        header = i[1][:]
+                fw.write("Alignment Features Retention Time")
+                for i in header[1:]:
+                    fw.write("\t"+str(i[0]))
+                # Actual Data
+                for i in totalResults:
+                    fw.write(str(i[0]))
+                    for j in header[1:]:
+                        flag = 0
+                        for k in i[1]:
+                            if j[0] == k[0]:
+                                fw.write("\t"+str(float(k[3])))
+                                flag = 1
+                        if flag == 0:
+                            fw.write("\t")
+                    fw.write("\n")
                 fw.write("\n")
 
             ##################################
