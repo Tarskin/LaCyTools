@@ -544,7 +544,7 @@ class App():
         # VARIABLES
         self.master = master
         self.version = "1.0.1"
-        self.build = "20180405c"
+        self.build = "20180405d"
         self.inputFile = ""
         self.inputFileIdx = 0
         self.refFile = ""
@@ -3634,7 +3634,7 @@ class App():
         self.bckSub.grid(row = 3, column = 1, sticky = W)
         self.norClus = Checkbutton(top, text = u"\u00B3Normalization per cluster", variable = master.normalizeCluster, onvalue = 1, offvalue = 0)
         self.norClus.grid(row = 4, column = 1, sticky = W)
-        self.align = Checkbutton(top, text="Alignment Residuals", variable=master.alignmentQC, onvalue=1, offvalue=0)
+        self.align = Checkbutton(top, text="Alignment QC", variable=master.alignmentQC, onvalue=1, offvalue=0)
         self.align.grid(row = 6, column=0, sticky=W)
         self.qc = Checkbutton(top, text = "Isotopic Pattern Quality", variable = master.qualityControl, onvalue = 1, offvalue = 0)
         self.qc.grid(row = 7, column = 0, sticky = W)
