@@ -544,7 +544,7 @@ class App():
         # VARIABLES
         self.master = master
         self.version = "1.0.1"
-        self.build = "20171027a"
+        self.build = "20180405a"
         self.inputFile = ""
         self.inputFileIdx = 0
         self.refFile = ""
@@ -1180,6 +1180,7 @@ class App():
                 self.inputFileIdx = filenames2idx[file]
                 readTimes = self.matchFeatureTimes(features)
                 self.readData(array,readTimes)
+                strippedFeatures = []
                 for i in features:
                     peakTime = 0
                     peakIntensity = 0
@@ -1252,6 +1253,7 @@ class App():
                     ###############
                     if peakIntensity > background + ALIGNMENT_S_N_CUTOFF * noise:
                         timePairs.append((i[1],peakTime))
+                        strippedFeatures.append(i)
                     else:
                         if self.log == True:
                             with open('LaCyTools.log', 'a') as flog:
@@ -1288,8 +1290,8 @@ class App():
                         lsq = 0
                         falign.write("Peak\tExpected RT\tOriginal RT\tAligned RT\n")
                         for index,timePair in enumerate(timePairs):
-                            falign.write(str(features[index][0])+"\t"+str(timePair[0])+"\t"+str(timePair[1])+"\t"+str(fit(float(timePair[1]),*alignFunction[0]))+"\n")
-                            lsq += float(features[index][0]) - fit(float(timePair[1]),*alignFunction[0])
+                            falign.write(str(strippedFeatures[index][0])+"\t"+str(timePair[0])+"\t"+str(timePair[1])+"\t"+str(fit(float(timePair[1]),*alignFunction[0]))+"\n")
+                            lsq += float(strippedFeatures[index][0]) - fit(float(timePair[1]),*alignFunction[0])
                     self.transform_mzXML(file,fit,alignFunction[0])
                 else:
                     if self.log == True:
