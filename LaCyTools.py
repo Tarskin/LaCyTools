@@ -544,7 +544,7 @@ class App():
         # VARIABLES
         self.master = master
         self.version = "1.0.1"
-        self.build = "20180405d"
+        self.build = "20180405e"
         self.inputFile = ""
         self.inputFileIdx = 0
         self.refFile = ""
@@ -565,10 +565,8 @@ class App():
         self.analyteBckSub = IntVar()
         self.normalizeCluster = IntVar()
         self.alignmentQC = IntVar()
-        self.ppmQC = IntVar()
         self.qualityControl = IntVar()
         self.spectraQualityControl = IntVar()
-        self.SN = IntVar()
         self.log = True
         # Background can be determined in two ways
         # Options are 'MIN', 'MEDIAN' and 'NOBAN'
@@ -3187,7 +3185,7 @@ class App():
             ##################################
             # Analyte Mass Accuracy (in PPM) #
             ##################################
-            if self.ppmQC.get() == 1:
+            if self.qualityControl.get() == 1:
                 minCharge = sys.maxint
                 maxCharge = 0
                 for i in total:
@@ -3263,9 +3261,9 @@ class App():
                         fw.write("\n")
                     fw.write("\n")
 
-            ###############
-            # Isotopic QC #
-            ###############
+            ############################
+            # Isotopic Pattern Quality #
+            ############################
             if self.qualityControl.get() == 1:
                 minCharge = sys.maxint
                 maxCharge = 0
@@ -3284,7 +3282,7 @@ class App():
                 for i in xrange(minCharge,maxCharge+1):
                     # This is a time intensive function
                     # Header
-                    fw.write("IPQ ("+str(i)+"+)")
+                    fw.write("Isotopic Pattern Quality ("+str(i)+"+)")
                     for j in compositions:
                         fw.write("\t"+str(j[0]))
                     fw.write("\n")
@@ -3347,10 +3345,10 @@ class App():
                         fw.write("\n")
                     fw.write("\n")
 
-            ##############################
-            # Signal to Background ratio #
-            ##############################
-            if self.SN.get() == 1:
+            #########################
+            # Signal to Noise ratio #
+            #########################
+            if self.qualityControl.get() == 1:
                 minCharge = sys.maxint
                 maxCharge = 0
                 for i in total:
@@ -3590,8 +3588,6 @@ class App():
             master.normalizeCluster.set(1)
             master.alignmentQC.set(1)
             master.qualityControl.set(1)
-            master.ppmQC.set(1)
-            master.SN.set(1)
             master.spectraQualityControl.set(1)
         def select_none(self):
             master.analyteIntensity.set(0)
@@ -3603,8 +3599,6 @@ class App():
             master.normalizeCluster.set(0)
             master.alignmentQC.set(0)
             master.qualityControl.set(0)
-            master.ppmQC.set(0)
-            master.SN.set(0)
             master.spectraQualityControl.set(0)
         def close(self):
             master.outputWindow = 0
@@ -3636,16 +3630,12 @@ class App():
         self.norClus.grid(row = 4, column = 1, sticky = W)
         self.align = Checkbutton(top, text="Alignment QC", variable=master.alignmentQC, onvalue=1, offvalue=0)
         self.align.grid(row = 6, column=0, sticky=W)
-        self.qc = Checkbutton(top, text = "Isotopic Pattern Quality", variable = master.qualityControl, onvalue = 1, offvalue = 0)
+        self.qc = Checkbutton(top, text = "Analyte QC", variable = master.qualityControl, onvalue = 1, offvalue = 0)
         self.qc.grid(row = 7, column = 0, sticky = W)
-        self.ppm = Checkbutton(top, text = "Mass Accuracy [ppm]", variable = master.ppmQC, onvalue = 1, offvalue = 0)
-        self.ppm.grid(row = 8, column = 0, sticky = W)
-        self.snratio = Checkbutton(top, text = "Signal-to-Noise Ratio", variable = master.SN, onvalue = 1, offvalue = 0)
-        self.snratio.grid(row = 9, column = 0, sticky = W)
         self.specQC = Checkbutton(top, text="Spectral QC", variable = master.spectraQualityControl, onvalue=1, offvalue=0)
-        self.specQC.grid(row = 10, column = 0, sticky = W)
+        self.specQC.grid(row = 8, column = 0, sticky = W)
         self.button = Button(top,text='Ok',command = lambda: close(self))
-        self.button.grid(row = 11, column = 0, columnspan = 2)
+        self.button.grid(row = 9, column = 0, columnspan = 2)
         top.lift()
 
     def binarySearch(self, array, target, high, direction):
