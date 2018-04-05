@@ -544,7 +544,7 @@ class App():
         # VARIABLES
         self.master = master
         self.version = "1.0.1"
-        self.build = "20180405a"
+        self.build = "20180405b"
         self.inputFile = ""
         self.inputFileIdx = 0
         self.refFile = ""
@@ -570,8 +570,12 @@ class App():
         self.spectraQualityControl = IntVar()
         self.SN = IntVar()
         self.log = True
+        # Background can be determined in two ways
+        # Options are 'MIN', 'MEDIAN' and 'NOBAN'
+        self.background = "MIN"
+        # Nose can be determined in multiple ways
+        # Options are 'RMS' and 'MM'
         self.noise = "RMS"
-        #self.noise = "MM"
         self.fig = matplotlib.figure.Figure(figsize=(12, 6))
 
         # Attempt to retrieve previously saved settings from settingsfile
@@ -4086,24 +4090,86 @@ class App():
                 windowIntensities.append(j[1])
             totals.append((windowAreas,windowIntensities))
         # Find the set of 5 consecutive windows with lowest average intensity
-        for i in range(0,(2*BACKGROUND_WINDOW)-4):
-            mix = totals[i][1]+totals[i+1][1]+totals[i+2][1]+totals[i+3][1]+totals[i+4][1]
-            avgBackground = numpy.average([sum(totals[i][0]),sum(totals[i+1][0]),sum(totals[i+2][0]),sum(totals[i+3][0]),sum(totals[i+4][0])])
-            avg = numpy.average(mix)
-            if avg < backgroundPoint:
+        if self.background == "MIN":
+            for i in range(0,(2*BACKGROUND_WINDOW)-4):
+                mix = totals[i][1]+totals[i+1][1]+totals[i+2][1]+totals[i+3][1]+totals[i+4][1]
+                avgBackground = numpy.average([sum(totals[i][0]),sum(totals[i+1][0]),sum(totals[i+2][0]),sum(totals[i+3][0]),sum(totals[i+4][0])])
+                dev = numpy.std(mix)
+                avg = numpy.average(mix)
+                if avg < backgroundPoint:
+                    backgroundPoint = avg
+                    backgroundArea = avgBackground
+                    if self.noise == "RMS":
+                        noise = dev
+                    elif self.noise == "MM":
+                        noise = max(mix) - min(mix)
+        # Find the set of 5 consecutive windows with median average intensity
+        elif self.background == "MEDIAN":
+            values = []
+            for i in range(0, (2*OUTER_BCK_BORDER)-4):
+                mix = totals[i][1]+totals[i+1][1]+totals[i+2][1]+totals[i+3][1]+totals[i+4][1]
+                avgBackground = numpy.average([sum(totals[i][0]), sum(totals[i+1][0]), sum(totals[i+2][0]), sum(totals[i+3][0]), sum(totals[i+4][0])])
+                dev = numpy.std(mix)
+                avg = numpy.average(mix)
                 if self.noise == "RMS":
-                    noise = numpy.std(mix)
+                    noise = dev
                 elif self.noise == "MM":
-                    minNoise = 10000000000000000000000
-                    maxNoise = 0
-                    for k in mix:
-                        if k > maxNoise:
-                            maxNoise = k
-                        if k < minNoise:
-                            minNoise = k
-                    noise = maxNoise - minNoise
-                backgroundPoint = avg
-                backgroundArea = avgBackground
+                    noise = max(mix) - min(mix)
+                values.append((avg, avgBackground, noise))
+            sortedValues = sorted(values, key=lambda x: x[0])
+            a, b, c = zip(*sortedValues)
+            backgroundPoint = a[len(a)//2]
+            backgroundArea = b[len(b)//2]
+            noise = c[len(c)//2]
+        # NOBAN METHOD
+        elif self.background == "NOBAN":
+            dataPoints = []
+            for i in range(0, (2*OUTER_BCK_BORDER)):
+                dataPoints.extend(totals[i][1])
+            sortedData = sorted(dataPoints)
+            startSize = int(0.25 * float(len(sortedData)))
+            currSize = startSize
+            currAverage = numpy.average(sortedData[0:currSize])
+            if self.noise == "MM":
+                currNoise = max(sortedData[0:currSize]) - min(sortedData[0:currSize])
+            elif self.noise == "RMS":
+                currNoise = numpy.std(sortedData[0:currSize])
+            directionFlag = 0
+            for k in range(0,len(sortedData)-(startSize+1)):
+                if sortedData[currSize+1] < currAverage + 3 * currNoise:
+                    directionFlag == 1
+                    currSize += 1
+                    currAverage =  numpy.average(sortedData[0:currSize])
+                    if self.noise == "MM":
+                        currNoise = max(sortedData[0:currSize]) - min(sortedData[0:currSize])
+                    elif self.noise == "RMS":
+                        currNoise = numpy.std(sortedData[0:currSize])
+                else:
+                    if sortedData[currSize-1] > currAverage + 3 * currNoise and directionFlag == 0:
+                        currSize -= 1
+                        currAverage = numpy.average(sortedData[0:currSize])
+                        if self.noise == "MM":
+                            currNoise = max(sortedData[0:currSize]) - min(sortedData[0:currSize])
+                        elif self.noise == "RMS":
+                            currNoise = numpy.std(sortedData[0:currSize])
+                    else:
+                        break
+            # Get Area
+            # Get length of window
+            windowLength = 0
+            for i in range(0, (2*OUTER_BCK_BORDER)):
+                if len(totals[i][1]) > windowLength:
+                    windowLength = len(totals[i][1])
+            # Get spacing in window
+            begin = self.search_right(data, lowEdge, len(data))
+            end = self.search_left(data, highEdge, len(data))
+            for j in data[begin:end]:
+                spacing =  (data[end][0] - data[begin][0]) / (end - begin)
+            currArea = windowLength * (currAverage * spacing)
+            # Assign values to generic names
+            backgroundPoint = currAverage
+            backgroundArea = currArea
+            noise = currNoise
         return (backgroundPoint,backgroundArea,noise)
 
     def matchFeatureTimes(self, features):
