@@ -544,7 +544,7 @@ class App():
         # VARIABLES
         self.master = master
         self.version = "1.0.1"
-        self.build = "20180405e"
+        self.build = "20180406a"
         self.inputFile = ""
         self.inputFileIdx = 0
         self.refFile = ""
@@ -1307,7 +1307,7 @@ class App():
         progressbar["value"] = 100
         # (CALIBRATION AND) EXTRACTION
         if self.refFile != "":
-            if self.analyteIntensity.get() == 0 and self.analyteRelIntensity.get() == 0 and self.analyteBackground.get() == 0 and self.analyteNoise.get() == 0 and self.alignmentQC.get() == 0 and self.qualityControl.get() == 0 and self.ppmQC.get() == 0 and self.SN.get() == 0 and self.spectraQualityControl.get() == 0:
+            if self.analyteIntensity.get() == 0 and self.analyteRelIntensity.get() == 0 and self.analyteBackground.get() == 0 and self.analyteNoise.get() == 0 and self.alignmentQC.get() == 0 and self.qualityControl.get() == 0 and self.spectraQualityControl.get() == 0:
                 tkMessageBox.showinfo("Output Error","No outputs selected")
             self.initCompositionMasses(self.refFile)
             ref = []
@@ -4060,7 +4060,7 @@ class App():
                     # Only spend time on doing this if we actually wanted the PPM Errors #
                     # This is not being used yet, but should!                            #
                     ######################################################################
-                    if self.ppmQC.get() == 1:
+                    if self.qualityControl.get() == 1:
                         try:
                             newX = numpy.linspace(x_points[0],x_points[-1],2500*(x_points[-1]-x_points[0]))
                             f = InterpolatedUnivariateSpline(x_points,y_points)
@@ -4104,6 +4104,7 @@ class App():
         for i in numpy.arange(-BACKGROUND_WINDOW,BACKGROUND_WINDOW,1.0/charge):
             windowAreas = []
             windowIntensities = []
+            windowMz = []
             begin = self.binarySearch(array,(float(target)-i*C[0][2])-float(width),len(array)-1,'left')
             end = self.binarySearch(array,(float(target)-i*C[0][2])+float(width),len(array)-1,'right')
             if begin == None or end == None:
@@ -4113,7 +4114,8 @@ class App():
             for j in array[begin:end]:
                 windowAreas.append(j[1] * ((array[end][0] - array[begin][0]) / (end - begin)))
                 windowIntensities.append(j[1])
-            totals.append((windowAreas,windowIntensities))
+                windowMz.append(j[0])
+            totals.append((windowAreas,windowIntensities,windowMz))
         # Find the set of 5 consecutive windows with lowest average intensity
         if self.background == "MIN":
             for i in range(0,(2*BACKGROUND_WINDOW)-4):
@@ -4131,7 +4133,7 @@ class App():
         # Find the set of 5 consecutive windows with median average intensity
         elif self.background == "MEDIAN":
             values = []
-            for i in range(0, (2*OUTER_BCK_BORDER)-4):
+            for i in range(0, (2*BACKGROUND_WINDOW)-4):
                 mix = totals[i][1]+totals[i+1][1]+totals[i+2][1]+totals[i+3][1]+totals[i+4][1]
                 avgBackground = numpy.average([sum(totals[i][0]), sum(totals[i+1][0]), sum(totals[i+2][0]), sum(totals[i+3][0]), sum(totals[i+4][0])])
                 dev = numpy.std(mix)
@@ -4149,7 +4151,7 @@ class App():
         # NOBAN METHOD
         elif self.background == "NOBAN":
             dataPoints = []
-            for i in range(0, (2*OUTER_BCK_BORDER)):
+            for i in range(0, (2*BACKGROUND_WINDOW)):
                 dataPoints.extend(totals[i][1])
             sortedData = sorted(dataPoints)
             startSize = int(0.25 * float(len(sortedData)))
@@ -4180,16 +4182,12 @@ class App():
                     else:
                         break
             # Get Area
-            # Get length of window
+            # Get length and spacing of window
             windowLength = 0
-            for i in range(0, (2*OUTER_BCK_BORDER)):
+            for i in range(0, (2*BACKGROUND_WINDOW)):
                 if len(totals[i][1]) > windowLength:
                     windowLength = len(totals[i][1])
-            # Get spacing in window
-            begin = self.search_right(data, lowEdge, len(data))
-            end = self.search_left(data, highEdge, len(data))
-            for j in data[begin:end]:
-                spacing =  (data[end][0] - data[begin][0]) / (end - begin)
+                    spacing = (max(totals[i][2])-min(totals[i][2])) / windowLength
             currArea = windowLength * (currAverage * spacing)
             # Assign values to generic names
             backgroundPoint = currAverage
