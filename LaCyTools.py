@@ -543,8 +543,8 @@ class App():
     def __init__(self,master):
         # VARIABLES
         self.master = master
-        self.version = "1.0.1"
-        self.build = "20180406a"
+        self.version = "1.1.0"
+        self.build = "20180419a"
         self.inputFile = ""
         self.inputFileIdx = 0
         self.refFile = ""
@@ -615,6 +615,32 @@ class App():
         menu.add_command(label="Data Storage", command = lambda: self.dataPopup(self))
         
         menu.add_command(label="Settings", command = lambda: self.settingsPopup(self))
+
+    def selectIsotopes(self, results):
+        """ TODO
+        """
+        # Sort by increasing m/z (x[0])
+        results.sort(key=lambda x: x[0])
+        # Add index of the isotope
+        foo = []
+        for index,i in enumerate(results):
+            foo.append((i[0],i[1],index))
+        # Sort by decreasing fraction (x[1])
+        results = foo
+        results.sort(key=lambda x: x[1], reverse=True)
+        contribution = 0.0
+        foo = []
+        # Take only the highest fraction isotopes until the contribution
+        # exceeds the MIN_TOTAL
+        for i in results:
+            contribution += float(i[1])
+            foo.append(i)
+            if contribution > MIN_TOTAL:
+                break
+        results = foo
+        # Sort by increasing m/z (x[0])
+        results.sort(key=lambda x: x[0])
+        return results
 
     def settingsPopup(self,master):
         """ This function creates a window in which the user can change
@@ -3844,7 +3870,7 @@ class App():
         element and the number of atoms of said element as an input and
         returns a list of (m/z,fraction) tuples. The number of isotopes
         that is returned is dependant on the distribution, once fractions
-        fall below 0.01 the function stops.
+        fall below 0.001 the function stops.
 
         INPUT1: A string containing the code for the element (ie 33S)
         INPUT2: An integer listing the number of atoms
@@ -3852,14 +3878,16 @@ class App():
         """
         fractions = []
         for i in element:
+            lastFraction = 0.
             j = 0
             while j <= number:
                 nCk = math.factorial(number) / (math.factorial(j) * math.factorial(number - j))
                 f = nCk * i[1]**j * (1 - i[1])**(number-j)
                 fractions.append((i[2]*j,f))
                 j+= 1
-                if f < 0.01:
+                if f < 0.001 and f < lastFraction:
                     break
+                lastFraction = f
         return fractions
 
     def parseAnalyte(self,Analyte):
@@ -3982,21 +4010,15 @@ class App():
                 values =  self.parseAnalyte(i[0])
                 totals = self.getChanceNetwork(values)
                 results = self.mergeChances(totals)
-                results.sort(key=lambda x: x[0])
-                # Make the range inclusive
+                results = self.selectIsotopes(results)
+                # Write analyte file
                 for j in range(minCharge,maxCharge+1):
-                    contribution = 0.0
                     maxIsotope = max(results,key=lambda tup:tup[1])[1]
-                    for index,k in enumerate(results):
-                        contribution += float(k[1])
+                    for k in results:
                         if calibration == True and k[1] == maxIsotope:
-                            fw.write(str(i[0])+"_"+str(j)+"_"+str(index)+"\t"+str((k[0]+j*BLOCKS[CHARGE_CARRIER[0]]['mass'])/j)+"\t"+str(k[1])+"\t"+str(massWindow)+"\t"+str(time)+"\t"+str(timeWindow)+"\tTrue\n")
+                            fw.write(str(i[0])+"_"+str(j)+"_"+str(k[2])+"\t"+str((k[0]+j*BLOCKS[CHARGE_CARRIER[0]]['mass'])/j)+"\t"+str(k[1])+"\t"+str(massWindow)+"\t"+str(time)+"\t"+str(timeWindow)+"\tTrue\n")
                         else:
-                            fw.write(str(i[0])+"_"+str(j)+"_"+str(index)+"\t"+str((k[0]+j*BLOCKS[CHARGE_CARRIER[0]]['mass'])/j)+"\t"+str(k[1])+"\t"+str(massWindow)+"\t"+str(time)+"\t"+str(timeWindow)+"\tFalse\n")
-                        #if k[1] < MIN_CONTRIBUTION:
-                        #   break
-                        if contribution > MIN_TOTAL:
-                            break
+                            fw.write(str(i[0])+"_"+str(j)+"_"+str(k[2])+"\t"+str((k[0]+j*BLOCKS[CHARGE_CARRIER[0]]['mass'])/j)+"\t"+str(k[1])+"\t"+str(massWindow)+"\t"+str(time)+"\t"+str(timeWindow)+"\tFalse\n")
         if self.log == True:
             with open('LaCyTools.log', 'a') as flog:
                 flog.write(str(datetime.now())+ "\tPRE-PROCESSING COMPLETE\n")
