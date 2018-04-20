@@ -93,371 +93,23 @@ S33 = [('33S',0.0076,0.99939)]
 S34 = [('34S',0.0429,1.9958)]
 S36 = [('36S',0.0002,3.99501)]
 
-# Building block properties
-BLOCKS = {  #######################
-            # Structural Features #
-            #######################
-                ###################
-                # Monosaccharides #
-                ###################
-                    'F':{'mass':146.05790879894,
-                        'available_for_charge_carrier':0,
-                        'carbons':6,
-                        'hydrogens':10,
-                        'nitrogens':0,
-                        'oxygens':4,
-                        'sulfurs':0},
-                    'H':{'mass':162.0528234185,
-                        'available_for_charge_carrier':0,
-                        'carbons':6,
-                        'hydrogens':10,
-                        'nitrogens':0,
-                        'oxygens':5,
-                        'sulfurs':0},
-                    'N':{'mass':203.07937251951,
-                        'available_for_charge_carrier':0,
-                        'carbons':8,
-                        'hydrogens':13,
-                        'nitrogens':1,
-                        'oxygens':5,
-                        'sulfurs':0},
-                    'S':{'mass':291.09541650647,
-                        'available_for_charge_carrier':0,
-                        'carbons':11,
-                        'hydrogens':17,
-                        'nitrogens':1,
-                        'oxygens':8,
-                        'sulfurs':0},
-                    'L':{'mass':273.08485182277,
-                        'available_for_charge_carrier':0,
-                        'carbons':11,
-                        'hydrogens':15,
-                        'nitrogens':1,
-                        'oxygens':7,
-                        'sulfurs':0},
-                    'M':{'mass':305.11106657061,
-                        'available_for_charge_carrier':0,
-                        'carbons':12,
-                        'hydrogens':19,
-                        'nitrogens':1,
-                        'oxygens':8,
-                        'sulfurs':0},
-                    'E':{'mass':319.12671663475,
-                        'available_for_charge_carrier':0,
-                        'carbons':13,
-                        'hydrogens':21,
-                        'nitrogens':1,
-                        'oxygens':8,
-                        'sulfurs':0},
-                #########################
-                # Mouse Monosaccharides #
-                #########################
-                    'G':{'mass':307.0903311261,
-                        'available_for_charge_carrier':0,
-                        'carbons':11,
-                        'hydrogens':17,
-                        'nitrogens':1,
-                        'oxygens':9,
-                        'sulfurs':0},
-                    'Gl':{'mass':289.0797664424,
-                        'available_for_charge_carrier':0,
-                        'carbons':11,
-                        'hydrogens':15,
-                        'nitrogens':1,
-                        'oxygens':8,
-                        'sulfurs':0},
-                    'Ge':{'mass':335.1216312544,
-                        'available_for_charge_carrier':0,
-                        'carbons':13,
-                        'hydrogens':21,
-                        'nitrogens':1,
-                        'oxygens':9,
-                        'sulfurs':0},
-                #######################
-                # Sugar Modifications #
-                #######################
-                    'P':{'mass':79.96633088875,
-                        'available_for_charge_carrier':0,
-                        'carbons':0,
-                        'hydrogens':1,
-                        'nitrogens':0,
-                        'oxygens':3,
-                        'sulfurs':0},
-                    'Su':{'mass':79.95681485868,
-                        'available_for_charge_carrier':0,
-                        'carbons':0,
-                        'hydrogens':0,
-                        'nitrogens':0,
-                        'oxygens':3,
-                        'sulfurs':1},
-                    'Ac':{'mass':42.0105646837,
-                        'available_for_charge_carrier':0,
-                        'carbons':2,
-                        'hydrogens':2,
-                        'nitrogens':0,
-                        'oxygens':1,
-                        'sulfurs':0},
-                ##############################
-                # Reducing End Modifications #
-                ##############################
-                    'aa':{'mass':139.06332853255,
-                        'available_for_charge_carrier':0,
-                        'carbons':7,
-                        'hydrogens':9,
-                        'nitrogens':1,
-                        'oxygens':2,
-                        'sulfurs':0},
-                    'ab':{'mass':138.07931294986,
-                        'available_for_charge_carrier':0,
-                        'carbons':7,
-                        'hydrogens':10,
-                        'nitrogens':2,
-                        'oxygens':1,
-                        'sulfurs':0},
-                    'free':{'mass':18.0105646837,
-                        'available_for_charge_carrier':0,
-                        'carbons':0,
-                        'hydrogens':2,
-                        'nitrogens':0,
-                        'oxygens':1,
-                        'sulfurs':0},
-            ###################
-            # Charge Carriers #
-            ###################
-                    #################
-                    # Positive Mode #
-                    #################
-                    'sodium':{'mass':22.9897692809,
-                        'available_for_charge_carrier':1,
-                        'carbons':0,
-                        'hydrogens':0,
-                        'nitrogens':0,
-                        'oxygens':0,
-                        'sulfurs':0},
-                    'potassium':{'mass':38.96370668,
-                        'available_for_charge_carrier':1,
-                        'carbons':0,
-                        'hydrogens':0,
-                        'nitrogens':0,
-                        'oxygens':0,
-                        'sulfurs':0},
-                    'proton':{'mass':1.007276466812,
-                        'available_for_charge_carrier':1,
-                        'carbons':0,
-                        'hydrogens':0,
-                        'nitrogens':0,
-                        'oxygens':0,
-                        'sulfurs':0},
-                    #################
-                    # Negative Mode #
-                    #################
-                    'protonLoss':{'mass':-1.007276466812,
-                        'available_for_charge_carrier':0,
-                        'carbons':0,
-                        'hydrogens':0,
-                        'nitrogens':0,
-                        'oxygens':0,
-                        'sulfurs':0},
-                    'electron':{'mass':0.00054857990946,
-                        'available_for_charge_carrier':0,
-                        'carbons':0,
-                        'hydrogens':0,
-                        'nitrogens':0,
-                        'oxygens':0,
-                        'sulfurs':0},
-            ############
-            # Elements #
-            ############
-                    '_H':{'mass':1.007825,
-                        'available_for_charge_carrier':0,
-                        'carbons':0,
-                        'hydrogens':1,
-                        'nitrogens':0,
-                        'oxygens':0,
-                        'sulfurs':0},
-                    '_C':{'mass':12.000000,
-                        'available_for_charge_carrier':0,
-                        'carbons':1,
-                        'hydrogens':0,
-                        'nitrogens':0,
-                        'oxygens':0,
-                        'sulfurs':0},
-                    '_N':{'mass':14.003074,
-                        'available_for_charge_carrier':0,
-                        'carbons':0,
-                        'hydrogens':0,
-                        'nitrogens':1,
-                        'oxygens':0,
-                        'sulfurs':0},
-                    '_O':{'mass':15.994915,
-                        'available_for_charge_carrier':0,
-                        'carbons':0,
-                        'hydrogens':0,
-                        'nitrogens':0,
-                        'oxygens':1,
-                        'sulfurs':0},
-                    '_S':{'mass':31.972071,
-                        'available_for_charge_carrier':0,
-                        'carbons':0,
-                        'hydrogens':0,
-                        'nitrogens':0,
-                        'oxygens':0,
-                        'sulfurs':1},
-                    '_P':{'mass':30.973761,
-                        'available_for_charge_carrier':0,
-                        'carbons':0,
-                        'hydrogens':0,
-                        'nitrogens':0,
-                        'oxygens':0,
-                        'sulfurs':1},
-                    '_F':{'mass':18.998403,
-                        'available_for_charge_carrier':0,
-                        'carbons':0,
-                        'hydrogens':0,
-                        'nitrogens':0,
-                        'oxygens':0,
-                        'sulfurs':0},
-                    '_Na':{'mass':22.989770,
-                        'available_for_charge_carrier':0,
-                        'carbons':0,
-                        'hydrogens':0,
-                        'nitrogens':0,
-                        'oxygens':0,
-                        'sulfurs':0},
-                    '_K':{'mass':38.963708,
-                        'available_for_charge_carrier':0,
-                        'carbons':0,
-                        'hydrogens':0,
-                        'nitrogens':0,
-                        'oxygens':0,
-                        'sulfurs':0},
-            #################
-            # Custom Blocks #
-            #################
-                    ####################
-                    # Immunoglobulin G #
-                    ####################
-                    'IgGI':{'mass':1188.5047307674,
-                        'available_for_charge_carrier':0,
-                        'carbons':50,
-                        'hydrogens':72,
-                        'nitrogens':14,
-                        'oxygens':20,
-                        'sulfurs':0},
-                    'IgGIV':{'mass':1172.5098161478,
-                        'available_for_charge_carrier':0,
-                        'carbons':50,
-                        'hydrogens':72,
-                        'nitrogens':14,
-                        'oxygens':19,
-                        'sulfurs':0},
-                    'IgGII':{'mass':1156.5149015283,
-                        'available_for_charge_carrier':0,
-                        'carbons':50,
-                        'hydrogens':72,
-                        'nitrogens':14,
-                        'oxygens':18,
-                        'sulfurs':0},
-                    ##########################    
-                    # Mouse Immunoglobulin G #
-                    ##########################
-                    'MIgGI':{'mass':1156.514906,
-                        'available_for_charge_carrier':0,
-                        'carbons':50,
-                        'hydrogens':72,
-                        'nitrogens':14,
-                        'oxygens':18,
-                        'sulfurs':0},
-                    'MIgGII':{'mass':996.451243,
-                        'available_for_charge_carrier':0,
-                        'carbons':41,
-                        'hydrogens':64,
-                        'nitrogens':12,
-                        'oxygens':17,
-                        'sulfurs':0},
-                    'MIgGIII':{'mass':1114.504341,
-                        'available_for_charge_carrier':0,
-                        'carbons':48,
-                        'hydrogens':70,
-                        'nitrogens':14,
-                        'oxygens':17,
-                        'sulfurs':0},
-                    ####################
-                    # Immunoglobulin A #
-                    ####################
-                    'Q':{'mass':4135.882086,
-                        'available_for_charge_carrier':0,
-                        'carbons':177,
-                        'hydrogens':270,
-                        'nitrogens':50,
-                        'oxygens':59,
-                        'sulfurs':3},
-                    'R':{'mass':2962.590442,
-                        'available_for_charge_carrier':0,
-                        'carbons':128,
-                        'hydrogens':219,
-                        'nitrogens':37,
-                        'oxygens':41,
-                        'sulfurs':1},
-                    'T':{'mass':2346.1348023,
-                        'available_for_charge_carrier':0,
-                        'carbons':101,
-                        'hydrogens':163,
-                        'nitrogens':27,
-                        'oxygens':33,
-                        'sulfurs':2},
-                    'U':{'mass':2183.0709257,
-                        'available_for_charge_carrier':0,
-                        'carbons':92,
-                        'hydrogens':154,
-                        'nitrogens':26,
-                        'oxygens':33,
-                        'sulfurs':2},
-                    ###############
-                    # Haptoglobin #
-                    ###############
-                    'HNLT':{'mass':1736.8516,
-                        'available_for_charge_carrier':0,
-                        'carbons':50,
-                        'hydrogens':72,
-                        'nitrogens':14,
-                        'oxygens':20,
-                        'sulfurs':0},
-                    'HNLTMC':{'mass':2678.3851,
-                        'available_for_charge_carrier':0,
-                        'carbons':118,
-                        'hydrogens':191,
-                        'nitrogens':33,
-                        'oxygens':36,
-                        'sulfurs':1},
-                    'HNHS':{'mass':972.4665,
-                        'available_for_charge_carrier':0,
-                        'carbons':43,
-                        'hydrogens':64,
-                        'nitrogens':12,
-                        'oxygens':14,
-                        'sulfurs':0},
-                    'HNAT':{'mass':503.2704,
-                        'available_for_charge_carrier':0,
-                        'carbons':20,
-                        'hydrogens':37,
-                        'nitrogens':7,
-                        'oxygens':8,
-                        'sulfurs':0},
-                    'HNHSNAT':{'mass':1457.7263,
-                        'available_for_charge_carrier':0,
-                        'carbons':63,
-                        'hydrogens':99,
-                        'nitrogens':19,
-                        'oxygens':21,
-                        'sulfurs':0},
-                    'HNYS':{'mass':1269.6354,
-                        'available_for_charge_carrier':0,
-                        'carbons':57,
-                        'hydrogens':87,
-                        'nitrogens':15,
-                        'oxygens':18,
-                        'sulfurs':0}}
+# Read the building blocks
+BLOCKS = {}
+for file in glob.glob("./blocks/*.block"):
+    block = os.path.splitext(os.path.basename(file))[0]
+    keys = []
+    values = []
+    with open(file,'r') as fr:
+        for line in fr:
+            key, value = line.rstrip().split()
+            keys.append(key)
+            try:
+                value = int(value)
+            except ValueError:
+                value = float(value)
+            values.append(value)
+    # TODO: Add function to verify block integrity before adding it
+    BLOCKS[block] = dict(zip(keys,values))
 UNITS = BLOCKS.keys()
 
 ###################
@@ -544,7 +196,7 @@ class App():
         # VARIABLES
         self.master = master
         self.version = "1.1.0"
-        self.build = "20180419a"
+        self.build = "20180420a"
         self.inputFile = ""
         self.inputFileIdx = 0
         self.refFile = ""
@@ -1369,7 +1021,7 @@ class App():
                     if self.calFile.get() == 1:
                         for j in ref:
                             if j[6] == "True" and int(round(float(j[4]))) == int(round(float(rt))):
-                                charge = j[0].split("_")[1]
+                                charge = j[0].split("_")[-2]
                                 calibrants.append((float(j[1]),int(charge)))
                         measuredMaxima = self.getLocalMaxima(calibrants,spectrum)
                         presentCalibrants = self.getObservedCalibrants(measuredMaxima,calibrants)
@@ -3518,7 +3170,7 @@ class App():
             fw.write(str(file)+"\n")
             fw.write("Composition\tCharge\tIsotope\tExact Mass\tAccurate Mass\tTime\tTheor Area\tMass Window\tTime Window\tArea\tBackground Area\tBackground Point\tNoise\tMax Intensity\n")
             for index,i in enumerate(results):
-                composition,charge,isotope = i[4][0].split("_")
+                composition, charge, isotope = "_".join(i[4][0].split("_")[:-2]), i[4][0].split("_")[-2], i[4][0].split("_")[-1]
                 fw.write(str(composition)+"\t"+str(charge)+"\t"+str(isotope)+"\t"+str(i[4][1])+"\t"+str(i[2])+"\t"+str(i[4][4])+"\t"+str(i[4][2])+"\t"+str(i[4][3])+"\t"+str(i[4][5])+"\t"+str(i[0])+"\t"+str(i[1][1])+"\t"+str(i[1][0])+"\t"+str(i[1][2])+"\t"+str(i[3])+"\n")
 
     def batchPopup(self,master):
@@ -4041,6 +3693,7 @@ class App():
         if self.inputFile == "":
             tkMessageBox.showinfo("Error Message","No input file selected")
             return
+        analyteBuffer = ""
         for i in ref:
             intensity = 0
             x_points = []
@@ -4055,8 +3708,11 @@ class App():
             else:
                 lowMz = self.binarySearch(array,float(i[1])-float(i[3]),len(array)-1,'left')
                 highMz = self.binarySearch(array,float(i[1])+float(i[3]),len(array)-1,'right')
-                if int(i[0].split("_")[-1]) == 0:
+                if "_".join(i[0].split("_")[:-1]) == analyteBuffer:
+                    pass
+                else:
                     background = self.getBackground(array, float(i[1]), charge, float(i[3]))
+                    analyteBuffer = "_".join(i[0].split("_")[:-1])
                 if lowMz and highMz:
                     try:
                         range(lowMz,highMz)
