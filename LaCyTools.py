@@ -94,6 +94,7 @@ S34 = [('34S',0.0429,1.9958)]
 S36 = [('36S',0.0002,3.99501)]
 
 # Read the building blocks
+# TODO: Move this inside the app
 BLOCKS = {}
 for file in glob.glob("./blocks/*.block"):
     block = os.path.splitext(os.path.basename(file))[0]
@@ -107,9 +108,33 @@ for file in glob.glob("./blocks/*.block"):
                 value = int(value)
             except ValueError:
                 value = float(value)
-            values.append(value)
-    # TODO: Add function to verify block integrity before adding it
+            values.append(value)    
     BLOCKS[block] = dict(zip(keys,values))
+# Verify the blocks
+for k,v in BLOCKS.items():
+    try:
+        if type(v['mass']) != float:
+            raise TypeError('Mass is not a float.')
+        if type(v['carbons']) != int:
+            raise TypeError('Carbons is not an integer.')
+        if type(v['hydrogens']) != int:
+            raise TypeError('Hydrogens is not an integer.')
+        if type(v['nitrogens']) != int:
+            raise TypeError('Nitrogens is not an integer.')
+        if type(v['oxygens']) != int:
+            raise TypeError('Oxygens is not an integer.')
+        if type(v['sulfurs']) != int:
+            raise TypeError('Sulfurs is not an integer.')
+        if type(v['available_for_charge_carrier']) != int:
+            raise TypeError('Charge carrier is not an integer.')
+        if v['available_for_charge_carrier'] not in [0,1]:
+            raise TypeError('Charge carrier is not 0 or 1.')
+    except:
+        root = Tk()
+        root.withdraw()
+        tkMessageBox.showinfo("Block Error","An error was observed in block "+str(k)+
+            ". Please correct this block before running LaCyTools again.")
+        sys.exit()
 UNITS = BLOCKS.keys()
 
 ###################
@@ -196,7 +221,7 @@ class App():
         # VARIABLES
         self.master = master
         self.version = "1.1.0"
-        self.build = "20180420a"
+        self.build = "20180423a"
         self.inputFile = ""
         self.inputFileIdx = 0
         self.refFile = ""
