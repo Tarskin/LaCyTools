@@ -221,7 +221,7 @@ class App():
         # VARIABLES
         self.master = master
         self.version = "1.1.0"
-        self.build = "20180423a"
+        self.build = "20180508a"
         self.inputFile = ""
         self.inputFileIdx = 0
         self.refFile = ""
@@ -1443,6 +1443,68 @@ class App():
                 intensity = i[1]
         return intensity
 
+    def createHeader(self, compositions, reference, chargestate=None):
+        """Creates a generic header for both combined and separate
+        charge states. The function uses the initial reference list,
+        the extracted compositions and the optional chargestate.
+        
+        INPUT 1: A list of tuples (analyte composition, analyte 
+                 retention time)
+        INPUT 2: A list of analyte reference tuples (analyte, m/z, 
+                 relative area, m/z window, rt, rt window and 
+                 calibration)
+        INPUT 3: An integer
+        OUTPUT: A string containing the header for the final summary
+        """
+        header = ""
+        for i in compositions:
+            header += "\t"+str(i[0])
+        header += "\n"
+        # List of theoretical areas
+        header += "Fraction"
+        for i in compositions:
+            sumInt = 0.      
+            for j in reference:
+                analyte = "_".join(j[0].split("_")[:-2])
+                charge = j[0].split("_")[-2]
+                isotope = j[0].split("_")[-1]
+                time = j[4]
+                timewindow = j[5]
+                if chargestate == None:
+                    if str(analyte) == str(i[0]) and float(time) == float(i[1]) and float(timewindow) == float(i[2]):
+                        sumInt += float(j[2])
+                else:
+                    if str(analyte) == str(i[0]) and float(time) == float(i[1]) and float(timewindow) == float(i[2]) and int(chargestate) == int(charge):
+                        sumInt += float(j[2])
+            header += "\t"
+            if sumInt > 0.:
+                header += str(sumInt)
+        header += "\n"
+        # List of monoisotopic masses
+        header += "Monoisotopic Mass"
+        for i in compositions:
+            masses = ""
+            for j in reference:
+                analyte = "_".join(j[0].split("_")[:-2])
+                charge = j[0].split("_")[-2]
+                isotope = j[0].split("_")[-1]
+                time = j[4]
+                timewindow = j[5]
+                if chargestate == None:
+                    if str(analyte) == str(i[0]) and float(time) == float(i[1]) and float(timewindow) == float(i[2]) and int(isotope) == 0:
+                        if masses == "":
+                            masses ="["+str(j[1])+"]"
+                        else:
+                            masses += " ["+str(j[1])+"]"
+                else:
+                    if str(analyte) == str(i[0]) and float(time) == float(i[1]) and float(timewindow) == float(i[2]) and int(isotope) == 0 and int(chargestate) == int(charge):
+                        if masses == "":
+                            masses ="["+str(j[1])+"]"
+                        else:
+                            masses += " ["+str(j[1])+"]"
+            header += "\t"+masses
+        header += "\n"
+        return header
 
     def combineResults(self):
         """ This function reads all the raw files and creates the summary
@@ -1554,7 +1616,9 @@ class App():
                 if line[0] == "#":
                     continue
                 parts=line.rstrip('\n').split('\t')
-                compositions.append((parts[0],parts[1]))
+                if not parts[3]:
+                    parts[3] = TIME_WINDOW
+                compositions.append((parts[0],parts[1],parts[3]))
 
         #############################
         # Start writing the results #
@@ -1596,39 +1660,8 @@ class App():
                 ##########################
                 if self.analytePerCharge.get() == 0:
                     # Header
-                    fw.write("Abs Int")
-                    for i in compositions:
-                        fw.write("\t"+str(i[0]))
-                    fw.write("\n")
-                    # List of theoretical areas
-                    fw.write("Fraction")
-                    for i in compositions:
-                        sumInt = 0.      
-                        for j in ref:
-                            glycan = j[0].split("_")[0]
-                            charge = j[0].split("_")[1]
-                            isotope = j[0].split("_")[2]
-                            if str(glycan) == str(i[0]):
-                                sumInt += float(j[2])
-                        fw.write("\t")
-                        if sumInt > 0.:
-                            fw.write(str(sumInt))
-                    fw.write("\n")
-                    # List of monoisotopic masses
-                    fw.write("Monoisotopic Mass")
-                    for i in compositions:
-                        masses = ""
-                        for j in ref:
-                            glycan = j[0].split("_")[0]
-                            charge = j[0].split("_")[1]
-                            isotope = j[0].split("_")[2]
-                            if str(glycan) == str(i[0]) and int(isotope) == 0:
-                                if masses == "":
-                                    masses ="["+str(j[1])+"]"
-                                else:
-                                    masses += " ["+str(j[1])+"]"
-                        fw.write("\t"+masses)
-                    fw.write("\n")
+                    header = "Absolute Intensity"+self.createHeader(compositions, ref)
+                    fw.write(header)
                     # Actual data
                     for i in total:
                         fw.write(str(i[0]))
@@ -1669,39 +1702,8 @@ class App():
                     for i in xrange(minCharge,maxCharge+1):
                         # This is a time intensive function
                         # Header
-                        fw.write("Abs Int ("+str(i)+"+)")
-                        for j in compositions:
-                            fw.write("\t"+str(j[0]))
-                        fw.write("\n")
-                        # List of theoretical areas
-                        fw.write("Fraction")
-                        for j in compositions:
-                            sumInt = 0.      
-                            for k in ref:
-                                glycan = k[0].split("_")[0]
-                                charge = k[0].split("_")[1]
-                                isotope = k[0].split("_")[2]
-                                if str(glycan) == str(j[0]) and int(charge) == int(i):
-                                    sumInt += float(k[2])
-                            fw.write("\t")
-                            if sumInt > 0.:
-                                fw.write(str(sumInt))
-                        fw.write("\n")
-                        # List of monoisotopic masses
-                        fw.write("Monoisotopic Mass")
-                        for j in compositions:
-                            masses = ""
-                            for k in ref:
-                                glycan = k[0].split("_")[0]
-                                charge = k[0].split("_")[1]
-                                isotope = k[0].split("_")[2]
-                                if str(glycan) == str(j[0]) and int(charge) == int(i) and int(isotope) == 0:
-                                    if masses == "":
-                                        masses ="["+str(k[1])+"]"
-                                    else:
-                                        masses += " ["+str(k[1])+"]"
-                            fw.write("\t"+masses)
-                        fw.write("\n")
+                        header = "Absolute Intensity ("+str(i)+"+)"+self.createHeader(compositions, ref, i)
+                        fw.write(header)
                         # Actual data
                         for j in total:
                             fw.write(str(j[0]))
@@ -1731,39 +1733,8 @@ class App():
                 #########################
                 if self.analytePerCharge.get() == 0:
                     # Header
-                    fw.write("Abs Int (Bck Sub)")
-                    for i in compositions:
-                        fw.write("\t"+str(i[0]))
-                    fw.write("\n")
-                    # List of theoretical areas
-                    fw.write("Fraction")
-                    for i in compositions:
-                        sumInt = 0.      
-                        for j in ref:
-                            glycan = j[0].split("_")[0]
-                            charge = j[0].split("_")[1]
-                            isotope = j[0].split("_")[2]
-                            if str(glycan) == str(i[0]):
-                                sumInt += float(j[2])
-                        fw.write("\t")
-                        if sumInt > 0.:
-                            fw.write(str(sumInt))
-                    fw.write("\n")
-                    # List of monoisotopic masses
-                    fw.write("Monoisotopic Mass")
-                    for i in compositions:
-                        masses = ""
-                        for j in ref:
-                            glycan = j[0].split("_")[0]
-                            charge = j[0].split("_")[1]
-                            isotope = j[0].split("_")[2]
-                            if str(glycan) == str(i[0]) and int(isotope) == 0:
-                                if masses == "":
-                                    masses ="["+str(j[1])+"]"
-                                else:
-                                    masses += " ["+str(j[1])+"]"
-                        fw.write("\t"+masses)
-                    fw.write("\n")
+                    header = "Absolute Intensity (Background Subtracted)"+self.createHeader(compositions, ref)
+                    fw.write(header)
                     # Actual data
                     for i in total:
                         fw.write(str(i[0]))
@@ -1804,39 +1775,8 @@ class App():
                     for i in xrange(minCharge,maxCharge+1):
                         # This is a time intensive function
                         # Header
-                        fw.write("Abs Int (Bck Sub, "+str(i)+"+)")
-                        for j in compositions:
-                            fw.write("\t"+str(j[0]))
-                        fw.write("\n")
-                        # List of theoretical areas
-                        fw.write("Fraction")
-                        for j in compositions:
-                            sumInt = 0.      
-                            for k in ref:
-                                glycan = k[0].split("_")[0]
-                                charge = k[0].split("_")[1]
-                                isotope = k[0].split("_")[2]
-                                if str(glycan) == str(j[0]) and int(charge) == int(i):
-                                    sumInt += float(k[2])
-                            fw.write("\t")
-                            if sumInt > 0.:
-                                fw.write(str(sumInt))
-                        fw.write("\n")
-                        # List of monoisotopic masses
-                        fw.write("Monoisotopic Mass")
-                        for j in compositions:
-                            masses = ""
-                            for k in ref:
-                                glycan = k[0].split("_")[0]
-                                charge = k[0].split("_")[1]
-                                isotope = k[0].split("_")[2]
-                                if str(glycan) == str(j[0]) and int(charge) == int(i) and int(isotope) == 0:
-                                    if masses == "":
-                                        masses ="["+str(k[1])+"]"
-                                    else:
-                                        masses += " ["+str(k[1])+"]"
-                            fw.write("\t"+masses)
-                        fw.write("\n")
+                        header = "Absolute Intensity (Background Subtracted, "+str(i)+"+)"+self.createHeader(compositions, ref, i)
+                        fw.write(header)
                         # Actual data
                         for j in total:
                             fw.write(str(j[0]))
@@ -1866,39 +1806,8 @@ class App():
                 #########################
                 if self.analytePerCharge.get() == 0:
                     # Header
-                    fw.write("Rel Int")
-                    for i in compositions:
-                        fw.write("\t"+str(i[0]))
-                    fw.write("\n")
-                    # List of theoretical areas
-                    fw.write("Fraction")
-                    for i in compositions:
-                        sumInt = 0.      
-                        for j in ref:
-                            glycan = j[0].split("_")[0]
-                            charge = j[0].split("_")[1]
-                            isotope = j[0].split("_")[2]
-                            if str(glycan) == str(i[0]):
-                                sumInt += float(j[2])
-                        fw.write("\t")
-                        if sumInt > 0.:
-                            fw.write(str(sumInt))
-                    fw.write("\n")
-                    # List of monoisotopic masses
-                    fw.write("Monoisotopic Mass")
-                    for i in compositions:
-                        masses = ""
-                        for j in ref:
-                            glycan = j[0].split("_")[0]
-                            charge = j[0].split("_")[1]
-                            isotope = j[0].split("_")[2]
-                            if str(glycan) == str(i[0]) and int(isotope) == 0:
-                                if masses == "":
-                                    masses ="["+str(j[1])+"]"
-                                else:
-                                    masses += " ["+str(j[1])+"]"
-                        fw.write("\t"+masses)
-                    fw.write("\n")
+                    header = "Relative Intensity"+self.createHeader(compositions, ref)
+                    fw.write(header)
                     # Actual data
                     for i in total:
                         fw.write(str(i[0]))
@@ -1948,39 +1857,8 @@ class App():
                     for i in xrange(minCharge,maxCharge+1):
                         # This is a time intensive function
                         # Header
-                        fw.write("Rel Int ("+str(i)+"+)")
-                        for j in compositions:
-                            fw.write("\t"+str(j[0]))
-                        fw.write("\n")
-                        # List of theoretical areas
-                        fw.write("Fraction")
-                        for j in compositions:
-                            sumInt = 0.      
-                            for k in ref:
-                                glycan = k[0].split("_")[0]
-                                charge = k[0].split("_")[1]
-                                isotope = k[0].split("_")[2]
-                                if str(glycan) == str(j[0]) and int(charge) == int(i):
-                                    sumInt += float(k[2])
-                            fw.write("\t")
-                            if sumInt > 0.:
-                                fw.write(str(sumInt))
-                        fw.write("\n")
-                        # List of monoisotopic masses
-                        fw.write("Monoisotopic Mass")
-                        for j in compositions:
-                            masses = ""
-                            for k in ref:
-                                glycan = k[0].split("_")[0]
-                                charge = k[0].split("_")[1]
-                                isotope = k[0].split("_")[2]
-                                if str(glycan) == str(j[0]) and int(charge) == int(i) and int(isotope) == 0:
-                                    if masses == "":
-                                        masses ="["+str(k[1])+"]"
-                                    else:
-                                        masses += " ["+str(k[1])+"]"
-                            fw.write("\t"+masses)
-                        fw.write("\n")
+                        header = "Relative Intensity ("+str(i)+"+)"+self.createHeader(compositions, ref)
+                        fw.write(header)
                         # Actual data
                         for j in total:
                             fw.write(str(j[0]))
@@ -2020,39 +1898,8 @@ class App():
                 #########################
                 if self.analytePerCharge.get() == 0:
                     # Header
-                    fw.write("Rel Int (Cluster Norm)")
-                    for i in compositions:
-                        fw.write("\t"+str(i[0]))
-                    fw.write("\n")
-                    # List of theoretical areas
-                    fw.write("Fraction")
-                    for i in compositions:
-                        sumInt = 0.      
-                        for j in ref:
-                            glycan = j[0].split("_")[0]
-                            charge = j[0].split("_")[1]
-                            isotope = j[0].split("_")[2]
-                            if str(glycan) == str(i[0]):
-                                sumInt += float(j[2])
-                        fw.write("\t")
-                        if sumInt > 0.:
-                            fw.write(str(sumInt))
-                    fw.write("\n")
-                    # List of monoisotopic masses
-                    fw.write("Monoisotopic Mass")
-                    for i in compositions:
-                        masses = ""
-                        for j in ref:
-                            glycan = j[0].split("_")[0]
-                            charge = j[0].split("_")[1]
-                            isotope = j[0].split("_")[2]
-                            if str(glycan) == str(i[0]) and int(isotope) == 0:
-                                if masses == "":
-                                    masses ="["+str(j[1])+"]"
-                                else:
-                                    masses += " ["+str(j[1])+"]"
-                        fw.write("\t"+masses)
-                    fw.write("\n")
+                    header = "Relative Intensity (Cluster Normalization)"+self.createHeader(compositions, ref)
+                    fw.write(header)
                     # Actual Data
                     clusters = []
                     for i in total:
@@ -2122,39 +1969,8 @@ class App():
                     for i in xrange(minCharge,maxCharge+1):
                         # This is a time intensive function
                         # Header
-                        fw.write("Rel Int (Cluster Norm, "+str(i)+"+)")
-                        for j in compositions:
-                            fw.write("\t"+str(j[0]))
-                        fw.write("\n")
-                        # List of theoretical areas
-                        fw.write("Fraction")
-                        for j in compositions:
-                            sumInt = 0.      
-                            for k in ref:
-                                glycan = k[0].split("_")[0]
-                                charge = k[0].split("_")[1]
-                                isotope = k[0].split("_")[2]
-                                if str(glycan) == str(j[0]) and int(charge) == int(i):
-                                    sumInt += float(k[2])
-                            fw.write("\t")
-                            if sumInt > 0.:
-                                fw.write(str(sumInt))
-                        fw.write("\n")
-                        # List of monoisotopic masses
-                        fw.write("Monoisotopic Mass")
-                        for j in compositions:
-                            masses = ""
-                            for k in ref:
-                                glycan = k[0].split("_")[0]
-                                charge = k[0].split("_")[1]
-                                isotope = k[0].split("_")[2]
-                                if str(glycan) == str(j[0]) and int(charge) == int(i) and int(isotope) == 0:
-                                    if masses == "":
-                                        masses ="["+str(k[1])+"]"
-                                    else:
-                                        masses += " ["+str(k[1])+"]"
-                            fw.write("\t"+masses)
-                        fw.write("\n")
+                        header = "Relative Intensity (Cluster Normalization, "+str(i)+"+)"+self.createHeader(compositions, ref, i)
+                        fw.write(header)
                         # Actual data
                         clusters = []
                         for j in total:
@@ -2214,39 +2030,8 @@ class App():
                 #########################
                 if self.analytePerCharge.get() == 0:
                     # Header
-                    fw.write("Rel Int (Bck Sub)")
-                    for i in compositions:
-                        fw.write("\t"+str(i[0]))
-                    fw.write("\n")
-                    # List of theoretical areas
-                    fw.write("Fraction")
-                    for i in compositions:
-                        sumInt = 0.      
-                        for j in ref:
-                            glycan = j[0].split("_")[0]
-                            charge = j[0].split("_")[1]
-                            isotope = j[0].split("_")[2]
-                            if str(glycan) == str(i[0]):
-                                sumInt += float(j[2])
-                        fw.write("\t")
-                        if sumInt > 0.:
-                            fw.write(str(sumInt))
-                    fw.write("\n")
-                    # List of monoisotopic masses
-                    fw.write("Monoisotopic Mass")
-                    for i in compositions:
-                        masses = ""
-                        for j in ref:
-                            glycan = j[0].split("_")[0]
-                            charge = j[0].split("_")[1]
-                            isotope = j[0].split("_")[2]
-                            if str(glycan) == str(i[0]) and int(isotope) == 0:
-                                if masses == "":
-                                    masses ="["+str(j[1])+"]"
-                                else:
-                                    masses += " ["+str(j[1])+"]"
-                        fw.write("\t"+masses)
-                    fw.write("\n")
+                    header = "Relative Intensity (Background Subtracted)"+self.createHeader(compositions, ref)
+                    fw.write(header)
                     # Actual data
                     for i in total:
                         fw.write(str(i[0]))
@@ -2296,39 +2081,8 @@ class App():
                     for i in xrange(minCharge,maxCharge+1):
                         # This is a time intensive function
                         # Header
-                        fw.write("Rel Int (Bck Sub, "+str(i)+"+)")
-                        for j in compositions:
-                            fw.write("\t"+str(j[0]))
-                        fw.write("\n")
-                        # List of theoretical areas
-                        fw.write("Fraction")
-                        for j in compositions:
-                            sumInt = 0.      
-                            for k in ref:
-                                glycan = k[0].split("_")[0]
-                                charge = k[0].split("_")[1]
-                                isotope = k[0].split("_")[2]
-                                if str(glycan) == str(j[0]) and int(charge) == int(i):
-                                    sumInt += float(k[2])
-                            fw.write("\t")
-                            if sumInt > 0.:
-                                fw.write(str(sumInt))
-                        fw.write("\n")
-                        # List of monoisotopic masses
-                        fw.write("Monoisotopic Mass")
-                        for j in compositions:
-                            masses = ""
-                            for k in ref:
-                                glycan = k[0].split("_")[0]
-                                charge = k[0].split("_")[1]
-                                isotope = k[0].split("_")[2]
-                                if str(glycan) == str(j[0]) and int(charge) == int(i) and int(isotope) == 0:
-                                    if masses == "":
-                                        masses ="["+str(k[1])+"]"
-                                    else:
-                                        masses += " ["+str(k[1])+"]"
-                            fw.write("\t"+masses)
-                        fw.write("\n")
+                        header = "Relative Intensity (Background Subtracted, "+str(i)+"+)"+self.createHeader(compositions, ref, i)
+                        fw.write(header)
                         # Actual data
                         for j in total:
                             fw.write(str(j[0]))
@@ -2368,39 +2122,8 @@ class App():
                 #########################
                 if self.analytePerCharge.get() == 0:
                     # Header
-                    fw.write("Rel Int (Bck Sub, Cluster Norm)")
-                    for i in compositions:
-                        fw.write("\t"+str(i[0]))
-                    fw.write("\n")
-                    # List of theoretical areas
-                    fw.write("Fraction")
-                    for i in compositions:
-                        sumInt = 0.      
-                        for j in ref:
-                            glycan = j[0].split("_")[0]
-                            charge = j[0].split("_")[1]
-                            isotope = j[0].split("_")[2]
-                            if str(glycan) == str(i[0]):
-                                sumInt += float(j[2])
-                        fw.write("\t")
-                        if sumInt > 0.:
-                            fw.write(str(sumInt))
-                    fw.write("\n")
-                    # List of monoisotopic masses
-                    fw.write("Monoisotopic Mass")
-                    for i in compositions:
-                        masses = ""
-                        for j in ref:
-                            glycan = j[0].split("_")[0]
-                            charge = j[0].split("_")[1]
-                            isotope = j[0].split("_")[2]
-                            if str(glycan) == str(i[0]) and int(isotope) == 0:
-                                if masses == "":
-                                    masses ="["+str(j[1])+"]"
-                                else:
-                                    masses += " ["+str(j[1])+"]"
-                        fw.write("\t"+masses)
-                    fw.write("\n")
+                    header = "Relative Intensity (Background Subtracted, Cluster Normalization)"+self.createHeader(compositions, ref)
+                    fw.write(header)
                     # Actual Data
                     clusters = []
                     for i in total:
@@ -2470,39 +2193,8 @@ class App():
                     for i in xrange(minCharge,maxCharge+1):
                         # This is a time intensive function
                         # Header
-                        fw.write("Rel Int (Bck Sub, Cluster Norm, "+str(i)+"+)")
-                        for j in compositions:
-                            fw.write("\t"+str(j[0]))
-                        fw.write("\n")
-                        # List of theoretical areas
-                        fw.write("Fraction")
-                        for j in compositions:
-                            sumInt = 0.      
-                            for k in ref:
-                                glycan = k[0].split("_")[0]
-                                charge = k[0].split("_")[1]
-                                isotope = k[0].split("_")[2]
-                                if str(glycan) == str(j[0]) and int(charge) == int(i):
-                                    sumInt += float(k[2])
-                            fw.write("\t")
-                            if sumInt > 0.:
-                                fw.write(str(sumInt))
-                        fw.write("\n")
-                        # List of monoisotopic masses
-                        fw.write("Monoisotopic Mass")
-                        for j in compositions:
-                            masses = ""
-                            for k in ref:
-                                glycan = k[0].split("_")[0]
-                                charge = k[0].split("_")[1]
-                                isotope = k[0].split("_")[2]
-                                if str(glycan) == str(j[0]) and int(charge) == int(i) and int(isotope) == 0:
-                                    if masses == "":
-                                        masses ="["+str(k[1])+"]"
-                                    else:
-                                        masses += " ["+str(k[1])+"]"
-                            fw.write("\t"+masses)
-                        fw.write("\n")
+                        header = "Relative Intensity (Background Subtracted, Cluster Normalization, "+str(i)+"+)"+self.createHeader(compositions, ref, i)
+                        fw.write(header)
                         # Actual data
                         clusters = []
                         for j in total:
@@ -2562,39 +2254,8 @@ class App():
                 #########################
                 if self.analytePerCharge.get() == 0:
                     # Header
-                    fw.write("BCK")
-                    for i in compositions:
-                        fw.write("\t"+str(i[0]))
-                    fw.write("\n")
-                    # List of theoretical areas
-                    fw.write("Fraction")
-                    for i in compositions:
-                        sumInt = 0.      
-                        for j in ref:
-                            glycan = j[0].split("_")[0]
-                            charge = j[0].split("_")[1]
-                            isotope = j[0].split("_")[2]
-                            if str(glycan) == str(i[0]):
-                                sumInt += float(j[2])
-                        fw.write("\t")
-                        if sumInt > 0.:
-                            fw.write(str(sumInt))
-                    fw.write("\n")
-                    # List of monoisotopic masses
-                    fw.write("Monoisotopic Mass")
-                    for i in compositions:
-                        masses = ""
-                        for j in ref:
-                            glycan = j[0].split("_")[0]
-                            charge = j[0].split("_")[1]
-                            isotope = j[0].split("_")[2]
-                            if str(glycan) == str(i[0]) and int(isotope) == 0:
-                                if masses == "":
-                                    masses ="["+str(j[1])+"]"
-                                else:
-                                    masses += " ["+str(j[1])+"]"
-                        fw.write("\t"+masses)
-                    fw.write("\n")
+                    header = "Background"+self.createHeader(compositions, ref)
+                    fw.write(header)
                     # Actual data
                     for i in total:
                         fw.write(str(i[0]))
@@ -2632,39 +2293,8 @@ class App():
                     for i in xrange(minCharge,maxCharge+1):
                         # This is a time intensive function
                         # Header
-                        fw.write("BCK ("+str(i)+"+)")
-                        for j in compositions:
-                            fw.write("\t"+str(j[0]))
-                        fw.write("\n")
-                        # List of theoretical areas
-                        fw.write("Fraction")
-                        for j in compositions:
-                            sumInt = 0.      
-                            for k in ref:
-                                glycan = k[0].split("_")[0]
-                                charge = k[0].split("_")[1]
-                                isotope = k[0].split("_")[2]
-                                if str(glycan) == str(j[0]) and int(charge) == int(i):
-                                    sumInt += float(k[2])
-                            fw.write("\t")
-                            if sumInt > 0.:
-                                fw.write(str(sumInt))
-                        fw.write("\n")
-                        # List of monoisotopic masses
-                        fw.write("Monoisotopic Mass")
-                        for j in compositions:
-                            masses = ""
-                            for k in ref:
-                                glycan = k[0].split("_")[0]
-                                charge = k[0].split("_")[1]
-                                isotope = k[0].split("_")[2]
-                                if str(glycan) == str(j[0]) and int(charge) == int(i) and int(isotope) == 0:
-                                    if masses == "":
-                                        masses ="["+str(k[1])+"]"
-                                    else:
-                                        masses += " ["+str(k[1])+"]"
-                            fw.write("\t"+masses)
-                        fw.write("\n")
+                        header = "Background ("+str(i)+"+)"+str(i)+"+)"+self.createHeader(compositions, ref, i)
+                        fw.write(header)
                         # Actual data
                         for j in total:
                             fw.write(str(j[0]))
@@ -2682,7 +2312,6 @@ class App():
                             fw.write("\n")
                         fw.write("\n")
 
-
             #######################
             # Analyte Noise Value #
             #######################
@@ -2692,39 +2321,8 @@ class App():
                 #########################
                 if self.analytePerCharge.get() == 0:
                     # Header
-                    fw.write("Noise")
-                    for i in compositions:
-                        fw.write("\t"+str(i[0]))
-                    fw.write("\n")
-                    # List of theoretical areas
-                    fw.write("Fraction")
-                    for i in compositions:
-                        sumInt = 0.      
-                        for j in ref:
-                            glycan = j[0].split("_")[0]
-                            charge = j[0].split("_")[1]
-                            isotope = j[0].split("_")[2]
-                            if str(glycan) == str(i[0]):
-                                sumInt += float(j[2])
-                        fw.write("\t")
-                        if sumInt > 0.:
-                            fw.write(str(sumInt))
-                    fw.write("\n")
-                    # List of monoisotopic masses
-                    fw.write("Monoisotopic Mass")
-                    for i in compositions:
-                        masses = ""
-                        for j in ref:
-                            glycan = j[0].split("_")[0]
-                            charge = j[0].split("_")[1]
-                            isotope = j[0].split("_")[2]
-                            if str(glycan) == str(i[0]) and int(isotope) == 0:
-                                if masses == "":
-                                    masses ="["+str(j[1])+"]"
-                                else:
-                                    masses += " ["+str(j[1])+"]"
-                        fw.write("\t"+masses)
-                    fw.write("\n")
+                    header = "Noise"+self.createHeader(compositions, ref)
+                    fw.write(header)
                     # Actual data
                     for i in total:
                         fw.write(str(i[0]))
@@ -2762,39 +2360,8 @@ class App():
                     for i in xrange(minCharge,maxCharge+1):
                         # This is a time intensive function
                         # Header
-                        fw.write("Noise ("+str(i)+"+)")
-                        for j in compositions:
-                            fw.write("\t"+str(j[0]))
-                        fw.write("\n")
-                        # List of theoretical areas
-                        fw.write("Fraction")
-                        for j in compositions:
-                            sumInt = 0.      
-                            for k in ref:
-                                glycan = k[0].split("_")[0]
-                                charge = k[0].split("_")[1]
-                                isotope = k[0].split("_")[2]
-                                if str(glycan) == str(j[0]) and int(charge) == int(i):
-                                    sumInt += float(k[2])
-                            fw.write("\t")
-                            if sumInt > 0.:
-                                fw.write(str(sumInt))
-                        fw.write("\n")
-                        # List of monoisotopic masses
-                        fw.write("Monoisotopic Mass")
-                        for j in compositions:
-                            masses = ""
-                            for k in ref:
-                                glycan = k[0].split("_")[0]
-                                charge = k[0].split("_")[1]
-                                isotope = k[0].split("_")[2]
-                                if str(glycan) == str(j[0]) and int(charge) == int(i) and int(isotope) == 0:
-                                    if masses == "":
-                                        masses ="["+str(k[1])+"]"
-                                    else:
-                                        masses += " ["+str(k[1])+"]"
-                            fw.write("\t"+masses)
-                        fw.write("\n")
+                        header = "Noise ("+str(i)+"+)"+self.createHeader(compositions, ref, i)
+                        fw.write(header)
                         # Actual data
                         for j in total:
                             fw.write(str(j[0]))
@@ -2830,7 +2397,7 @@ class App():
                 for i in totalResults:
                     if len(i[1]) > len(header):
                         header = i[1][:]
-                fw.write("Alignment Residuals")
+                fw.write("Alignment Features Residual")
                 for i in header[1:]:
                     fw.write("\t"+str(i[0]))
                 fw.write("\tRMS\n")
@@ -2906,39 +2473,8 @@ class App():
                 for i in xrange(minCharge,maxCharge+1):
                     # This is a time intensive function
                     # Header
-                    fw.write("Mass Accuracy [ppm] ("+str(i)+"+)")
-                    for j in compositions:
-                        fw.write("\t"+str(j[0]))
-                    fw.write("\n")
-                    # List of theoretical areas
-                    fw.write("Fraction")
-                    for j in compositions:
-                        sumInt = 0.      
-                        for k in ref:
-                            glycan = k[0].split("_")[0]
-                            charge = k[0].split("_")[1]
-                            isotope = k[0].split("_")[2]
-                            if str(glycan) == str(j[0]) and int(charge) == int(i):
-                                sumInt += float(k[2])
-                        fw.write("\t")
-                        if sumInt > 0.:
-                            fw.write(str(sumInt))
-                    fw.write("\n")
-                    # List of monoisotopic masses
-                    fw.write("Monoisotopic Mass")
-                    for j in compositions:
-                        masses = ""
-                        for k in ref:
-                            glycan = k[0].split("_")[0]
-                            charge = k[0].split("_")[1]
-                            isotope = k[0].split("_")[2]
-                            if str(glycan) == str(j[0]) and int(charge) == int(i) and int(isotope) == 0:
-                                if masses == "":
-                                    masses ="["+str(k[1])+"]"
-                                else:
-                                    masses += " ["+str(k[1])+"]"
-                        fw.write("\t"+masses)
-                    fw.write("\n")
+                    header = "Mass Accuracy [ppm] ("+str(i)+"+)"+self.createHeader(compositions, ref, i)
+                    fw.write(header)
                     # Actual Data
                     for j in total:
                         fw.write(str(j[0]))
@@ -2985,39 +2521,8 @@ class App():
                 for i in xrange(minCharge,maxCharge+1):
                     # This is a time intensive function
                     # Header
-                    fw.write("Isotopic Pattern Quality ("+str(i)+"+)")
-                    for j in compositions:
-                        fw.write("\t"+str(j[0]))
-                    fw.write("\n")
-                    # List of theoretical areas
-                    fw.write("Fraction")
-                    for j in compositions:
-                        sumInt = 0.      
-                        for k in ref:
-                            glycan = k[0].split("_")[0]
-                            charge = k[0].split("_")[1]
-                            isotope = k[0].split("_")[2]
-                            if str(glycan) == str(j[0]) and int(charge) == int(i):
-                                sumInt += float(k[2])
-                        fw.write("\t")
-                        if sumInt > 0.:
-                            fw.write(str(sumInt))
-                    fw.write("\n")
-                    # List of monoisotopic masses
-                    fw.write("Monoisotopic Mass")
-                    for j in compositions:
-                        masses = ""
-                        for k in ref:
-                            glycan = k[0].split("_")[0]
-                            charge = k[0].split("_")[1]
-                            isotope = k[0].split("_")[2]
-                            if str(glycan) == str(j[0]) and int(charge) == int(i) and int(isotope) == 0:
-                                if masses == "":
-                                    masses ="["+str(k[1])+"]"
-                                else:
-                                    masses += " ["+str(k[1])+"]"
-                        fw.write("\t"+masses)
-                    fw.write("\n")
+                    header = "Isotopic Pattern Quality ("+str(i)+"+)"+self.createHeader(compositions, ref, i)
+                    fw.write(header)
                     # Actual data
                     for j in total:
                         fw.write(str(j[0]))
@@ -3069,39 +2574,8 @@ class App():
                 for i in xrange(minCharge,maxCharge+1):
                     # This is a time intensive function
                     # Header
-                    fw.write("S/N ("+str(i)+"+)")
-                    for j in compositions:
-                        fw.write("\t"+str(j[0]))
-                    fw.write("\n")
-                    # List of theoretical areas
-                    fw.write("Fraction")
-                    for j in compositions:
-                        sumInt = 0.      
-                        for k in ref:
-                            glycan = k[0].split("_")[0]
-                            charge = k[0].split("_")[1]
-                            isotope = k[0].split("_")[2]
-                            if str(glycan) == str(j[0]) and int(charge) == int(i):
-                                sumInt += float(k[2])
-                        fw.write("\t")
-                        if sumInt > 0.:
-                            fw.write(str(sumInt))
-                    fw.write("\n")
-                    # List of monoisotopic masses
-                    fw.write("Monoisotopic Mass")
-                    for j in compositions:
-                        masses = ""
-                        for k in ref:
-                            glycan = k[0].split("_")[0]
-                            charge = k[0].split("_")[1]
-                            isotope = k[0].split("_")[2]
-                            if str(glycan) == str(j[0]) and int(charge) == int(i) and int(isotope) == 0:
-                                if masses == "":
-                                    masses ="["+str(k[1])+"]"
-                                else:
-                                    masses += " ["+str(k[1])+"]"
-                        fw.write("\t"+masses)
-                    fw.write("\n")
+                    header = "S/N ("+str(i)+"+)"+self.createHeader(compositions, ref, i)
+                    fw.write(header)
                     # Actual data
                     for j in total:
                         fw.write(str(j[0]))
