@@ -220,8 +220,8 @@ class App():
     def __init__(self,master):
         # VARIABLES
         self.master = master
-        self.version = "1.1.0"
-        self.build = "20180508a"
+        self.version = "1.1.0-alpha"
+        self.build = "20180820a"
         self.inputFile = ""
         self.inputFileIdx = 0
         self.refFile = ""
@@ -1082,7 +1082,6 @@ class App():
                         for j in spectrum:
                             mzList.append(float(j[0]))
                             intList.append(int(j[1]))
-                        # Additional batches still work here
                         # Transform python list into numpy array
                         mzArray = numpy.array(mzList)
                         newArray = f(mzArray)
@@ -1483,25 +1482,37 @@ class App():
         # List of monoisotopic masses
         header += "Monoisotopic Mass"
         for i in compositions:
-            masses = ""
+            masses = []
+            current_relative_intensity = 0.
+            # Retrieve highest relative intensity
             for j in reference:
                 analyte = "_".join(j[0].split("_")[:-2])
                 charge = j[0].split("_")[-2]
                 isotope = j[0].split("_")[-1]
+                relative_intensity = float(j[2])
+                time = j[4]
+                timewindow = j[5]
+                if str(analyte) == str(i[0]) and float(time) == float(i[1]) and float(timewindow) == float(i[2]) and relative_intensity >= current_relative_intensity:
+                    current_relative_intensity = relative_intensity
+            # Get actual data
+            for j in reference:
+                analyte = "_".join(j[0].split("_")[:-2])
+                charge = j[0].split("_")[-2]
+                isotope = j[0].split("_")[-1]
+                relative_intensity = float(j[2])
                 time = j[4]
                 timewindow = j[5]
                 if chargestate == None:
-                    if str(analyte) == str(i[0]) and float(time) == float(i[1]) and float(timewindow) == float(i[2]) and int(isotope) == 0:
-                        if masses == "":
-                            masses ="["+str(j[1])+"]"
-                        else:
-                            masses += " ["+str(j[1])+"]"
+                    if str(analyte) == str(i[0]) and float(time) == float(i[1]) and float(timewindow) == float(i[2]) and relative_intensity == current_relative_intensity:
+                        masses.append(float(j[1]))
                 else:
-                    if str(analyte) == str(i[0]) and float(time) == float(i[1]) and float(timewindow) == float(i[2]) and int(isotope) == 0 and int(chargestate) == int(charge):
-                        if masses == "":
-                            masses ="["+str(j[1])+"]"
-                        else:
-                            masses += " ["+str(j[1])+"]"
+                    if str(analyte) == str(i[0]) and float(time) == float(i[1]) and float(timewindow) == float(i[2]) and relative_intensity == current_relative_intensity and int(chargestate) == int(charge):
+                        masses.append(float(j[1]))
+            if masses:
+                masses  = "["+", ".join(map(str, masses))+"]" 
+            else:
+                masses += "NA"
+            print masses, type(masses)
             header += "\t"+masses
         header += "\n"
         return header
@@ -1531,7 +1542,7 @@ class App():
                         break
                     line = line.strip().split("\t")
                     if current:
-                        if current.composition == line[0] and current.time == line[5]:
+                        if current.composition == line[0] and current.time == line[5] and current.timeWindow == line[8]:
                             foo = Isotope()
                             foo.isotope = line[2]
                             foo.mass = float(line[3])
@@ -1669,9 +1680,9 @@ class App():
                             sumInt = 0
                             for k in i[1]:
                                 try:
-                                    if k.composition == j[0] and float(k.time) == float(j[1]):
+                                    if k.composition == j[0] and float(k.time) == float(j[1]) and float(k.timeWindow) == float(j[2]):
                                         for l in k.isotopes:
-                                            sumInt += l.obsInt
+                                            sumInt += max(0, l.obsInt)
                                 except AttributeError:
                                     pass
                             if sumInt > 0:
@@ -1691,7 +1702,7 @@ class App():
                         for j in compositions:
                             for k in i[1]:
                                 try:
-                                    if k.composition == j[0] and float(k.time) == float(j[1]):
+                                    if k.composition == j[0] and float(k.time) == float(j[1]) and float(k.timeWindow) == float(j[2]):
                                         for l in k.isotopes:
                                             if int(l.charge) < minCharge:
                                                 minCharge = int(l.charge)
@@ -1711,10 +1722,10 @@ class App():
                                 sumInt = 0
                                 for l in j[1]:
                                     try:
-                                        if l.composition == k[0] and float(l.time) == float(k[1]):
+                                        if l.composition == k[0] and float(l.time) == float(k[1])  and float(l.timeWindow) == float(k[2]):
                                             for m in l.isotopes:
                                                 if int(m.charge) == i:
-                                                    sumInt += m.obsInt
+                                                    sumInt += max(0, m.obsInt)
                                     except AttributeError:
                                         pass
                                 if sumInt > 0:
@@ -1742,7 +1753,7 @@ class App():
                             sumInt = 0
                             for k in i[1]:
                                 try:
-                                    if k.composition == j[0] and float(k.time) == float(j[1]):
+                                    if k.composition == j[0] and float(k.time) == float(j[1]) and float(k.timeWindow) == float(j[2]):
                                         for l in k.isotopes:
                                             sumInt += max(0, l.obsInt - l.background)
                                 except AttributeError:
@@ -1764,7 +1775,7 @@ class App():
                         for j in compositions:
                             for k in i[1]:
                                 try:
-                                    if k.composition == j[0] and float(k.time) == float(j[1]):
+                                    if k.composition == j[0] and float(k.time) == float(j[1]) and float(k.timeWindow) == float(j[2]):
                                         for l in k.isotopes:
                                             if int(l.charge) < minCharge:
                                                 minCharge = int(l.charge)
@@ -1784,7 +1795,7 @@ class App():
                                 sumInt = 0
                                 for l in j[1]:
                                     try:
-                                        if l.composition == k[0] and float(l.time) == float(k[1]):
+                                        if l.composition == k[0] and float(l.time) == float(k[1]) and float(l.timeWindow) == float(k[2]):
                                             for m in l.isotopes:
                                                 if int(m.charge) == i:
                                                     sumInt += max(0, m.obsInt - m.background)
@@ -1815,24 +1826,30 @@ class App():
                         for j in compositions:
                             for k in i[1]:
                                 try:
-                                    if k.composition == j[0] and float(k.time) == float(j[1]):
+                                    if k.composition == j[0] and float(k.time) == float(j[1]) and float(k.timeWindow) == float(j[2]):
                                         for l in k.isotopes:
-                                            totalIntensity += l.obsInt
+                                            print max(0, l.obsInt)
+                                            totalIntensity += max(0, l.obsInt)
                                 except AttributeError:
                                     pass
+                        print "Total Int: "+str(totalIntensity)
                         for j in compositions:
                             sumInt = 0
                             for k in i[1]:
                                 try:
-                                    if k.composition == j[0] and float(k.time) == float(j[1]):
+                                    if k.composition == j[0] and float(k.time) == float(j[1]) and float(k.timeWindow) == float(j[2]):
                                         for l in k.isotopes:
-                                            sumInt += l.obsInt
+                                            print max(0, l.obsInt)
+                                            sumInt += max(0, l.obsInt)
                                 except AttributeError:
                                     pass
+                            print "Sum Int: "+str(sumInt)
                             if sumInt > 0:
                                 fw.write("\t"+str(float(sumInt)/float(totalIntensity)))
                             else:
                                 fw.write("\t")
+                            print "Rel: "+str(float(sumInt)/float(totalIntensity))
+                            raw_input("Arff")
                         fw.write("\n")
                     fw.write("\n")
 
@@ -1846,7 +1863,7 @@ class App():
                         for j in compositions:
                             for k in i[1]:
                                 try:
-                                    if k.composition == j[0] and float(k.time) == float(j[1]):
+                                    if k.composition == j[0] and float(k.time) == float(j[1]) and float(k.timeWindow) == float(j[2]):
                                         for l in k.isotopes:
                                             if int(l.charge) < minCharge:
                                                 minCharge = int(l.charge)
@@ -1866,20 +1883,20 @@ class App():
                             for k in compositions:
                                 for l in j[1]:
                                     try:
-                                        if l.composition == k[0] and float(l.time) == float(k[1]):
+                                        if l.composition == k[0] and float(l.time) == float(k[1]) and float(l.timeWindow) == float(k[2]):
                                             for m in l.isotopes:
                                                 if int(m.charge) == i:
-                                                    totalIntensity += m.obsInt
+                                                    totalIntensity += max(0, m.obsInt)
                                     except AttributeError:
                                         pass
                             for k in compositions:
                                 sumInt = 0
                                 for l in j[1]:
                                     try:
-                                        if l.composition == k[0] and float(l.time) == float(k[1]):
+                                        if l.composition == k[0] and float(l.time) == float(k[1]) and float(l.timeWindow) == float(k[2]):
                                             for m in l.isotopes:
                                                 if int(m.charge) == i:
-                                                    sumInt += m.obsInt
+                                                    sumInt += max(0, m.obsInt)
                                     except AttributeError:
                                         pass
                                 if sumInt > 0:
@@ -1891,7 +1908,9 @@ class App():
 
             ######################################################
             # Analyte Relative Intensity (Cluster Normalization) #
-            ######################################################
+            ################################################################################################
+            # TODO: Check if this can not be simplified now that we have timewindow in compositions as [2] #
+            ################################################################################################
             if self.analyteRelIntensity.get() == 1 and self.analyteBckSub.get() == 0 and self.normalizeCluster.get() == 1:
                 #########################
                 # Combined charge state #
@@ -1921,9 +1940,9 @@ class App():
                             for k in compositions:
                                 for l in i[1]:
                                     try:
-                                        if l.composition == k[0] and float(l.time) == clusterTime and float(l.timeWindow) == clusterWindow and float(k[1]) == float(l.time):
+                                        if l.composition == k[0] and float(l.time) == clusterTime and float(l.timeWindow) == clusterWindow and float(k[1]) == float(l.time) and float(k[2]) == float(l.timeWindow):
                                             for m in l.isotopes:
-                                                totalIntensity += m.obsInt
+                                                totalIntensity += max(0, m.obsInt)
                                     except AttributeError:
                                         pass
                             clusterValues.append((clusterTime, clusterWindow, totalIntensity))
@@ -1933,10 +1952,10 @@ class App():
                             for k in i[1]:
                                 for l in clusterValues:
                                     try:
-                                        if k.composition == j[0] and float(k.time) == l[0] and float(k.timeWindow) == l[1] and float(j[1]) == float(k.time):
+                                        if k.composition == j[0] and float(k.time) == l[0] and float(k.timeWindow) == l[1] and float(j[1]) == float(k.time) and float(j[2]) == float(k.timeWindow):
                                             flag = 1
                                             for m in k.isotopes:                                             
-                                                sumInt += m.obsInt
+                                                sumInt += max(0, m.obsInt)
                                             if sumInt > 0:
                                                 fw.write("\t"+str(float(sumInt)/float(l[2])))
                                             else:
@@ -1958,7 +1977,7 @@ class App():
                         for j in compositions:
                             for k in i[1]:
                                 try:
-                                    if k.composition == j[0] and float(k.time) == float(j[1]):
+                                    if k.composition == j[0] and float(k.time) == float(j[1]) and float(k.timeWindow) == float(j[2]):
                                         for l in k.isotopes:
                                             if int(l.charge) < minCharge:
                                                 minCharge = int(l.charge)
@@ -1992,10 +2011,10 @@ class App():
                                 for l in compositions:
                                     for m in j[1]:
                                         try:
-                                            if m.composition == l[0] and float(m.time) == clusterTime and float(m.timeWindow) == clusterWindow and float(l[1]) == float(m.time):
+                                            if m.composition == l[0] and float(m.time) == clusterTime and float(m.timeWindow) == clusterWindow and float(l[1]) == float(m.time) and float(l[2]) == float(m.timeWindow):
                                                 for n in m.isotopes:
                                                     if int(n.charge) == i:
-                                                        totalIntensity += n.obsInt
+                                                        totalIntensity += max(0, n.obsInt)
                                         except AttributeError:
                                             pass
                                 clusterValues.append((clusterTime, clusterWindow, totalIntensity))   
@@ -2005,11 +2024,11 @@ class App():
                                 for l in j[1]:
                                     for m in clusterValues:
                                         try:
-                                            if l.composition == k[0] and float(l.time) == m[0] and float(l.timeWindow) == m[1] and float(k[1]) == float(l.time):
+                                            if l.composition == k[0] and float(l.time) == m[0] and float(l.timeWindow) == m[1] and float(k[1]) == float(l.time) and float(k[2]) == float(l.timeWindow):
                                                 flag = 1
                                                 for n in l.isotopes:
                                                     if int(n.charge) == i:
-                                                        sumInt += n.obsInt
+                                                        sumInt += max(0, n.obsInt)
                                                 if sumInt > 0:
                                                     fw.write("\t"+str(float(sumInt)/float(m[2])))
                                                 else:
@@ -2039,7 +2058,7 @@ class App():
                         for j in compositions:
                             for k in i[1]:
                                 try:
-                                    if k.composition == j[0] and float(k.time) == float(j[1]):
+                                    if k.composition == j[0] and float(k.time) == float(j[1]) and float(k.timeWindow) == float(j[2]):
                                         for l in k.isotopes:
                                             totalIntensity += max(0, l.obsInt - l.background)
                                 except AttributeError:
@@ -2048,7 +2067,7 @@ class App():
                             sumInt = 0
                             for k in i[1]:
                                 try:
-                                    if k.composition == j[0] and float(k.time) == float(j[1]):
+                                    if k.composition == j[0] and float(k.time) == float(j[1]) and float(k.timeWindow) == float(j[2]):
                                         for l in k.isotopes:
                                             sumInt += max(0, l.obsInt - l.background)
                                 except AttributeError:
@@ -2070,7 +2089,7 @@ class App():
                         for j in compositions:
                             for k in i[1]:
                                 try:
-                                    if k.composition == j[0] and float(k.time) == float(j[1]):
+                                    if k.composition == j[0] and float(k.time) == float(j[1]) and float(k.timeWindow) == float(j[2]):
                                         for l in k.isotopes:
                                             if int(l.charge) < minCharge:
                                                 minCharge = int(l.charge)
@@ -2090,7 +2109,7 @@ class App():
                             for k in compositions:
                                 for l in j[1]:
                                     try:
-                                        if l.composition == k[0] and float(l.time) == float(k[1]):
+                                        if l.composition == k[0] and float(l.time) == float(k[1]) and float(l.timeWindow) == float(k[2]):
                                             for m in l.isotopes:
                                                 if int(m.charge) == i:
                                                     totalIntensity += max(0, m.obsInt - m.background)
@@ -2100,7 +2119,7 @@ class App():
                                 sumInt = 0
                                 for l in j[1]:
                                     try:
-                                        if l.composition == k[0] and float(l.time) == float(k[1]):
+                                        if l.composition == k[0] and float(l.time) == float(k[1]) and float(l.timeWindow) == float(k[2]):
                                             for m in l.isotopes:
                                                 if int(m.charge) == i:
                                                     sumInt += max(0, m.obsInt - m.background)
@@ -2145,7 +2164,7 @@ class App():
                             for k in compositions:
                                 for l in i[1]:
                                     try:
-                                        if l.composition == k[0] and float(l.time) == clusterTime and float(l.timeWindow) == clusterWindow and float(k[1]) == float(l.time):
+                                        if l.composition == k[0] and float(l.time) == clusterTime and float(l.timeWindow) == clusterWindow and float(k[1]) == float(l.time) and float(k[2]) == float(l.timeWindow):
                                             for m in l.isotopes:
                                                 totalIntensity += max(0, m.obsInt - m.background)
                                     except AttributeError:
@@ -2157,7 +2176,7 @@ class App():
                             for k in i[1]:
                                 for l in clusterValues:
                                     try:
-                                        if k.composition == j[0] and float(k.time) == l[0] and float(k.timeWindow) == l[1] and float(j[1]) == float(k.time):
+                                        if k.composition == j[0] and float(k.time) == l[0] and float(k.timeWindow) == l[1] and float(j[1]) == float(k.time) and float(j[2]) == float(k.timeWindow):
                                             flag = 1
                                             for m in k.isotopes:                                             
                                                 sumInt += max(0, m.obsInt - m.background)
@@ -2182,7 +2201,7 @@ class App():
                         for j in compositions:
                             for k in i[1]:
                                 try:
-                                    if k.composition == j[0] and float(k.time) == float(j[1]):
+                                    if k.composition == j[0] and float(k.time) == float(j[1]) and float(k.timeWindow) == float(j[2]):
                                         for l in k.isotopes:
                                             if int(l.charge) < minCharge:
                                                 minCharge = int(l.charge)
@@ -2216,7 +2235,7 @@ class App():
                                 for l in compositions:
                                     for m in j[1]:
                                         try:
-                                            if m.composition == l[0] and float(m.time) == clusterTime and float(m.timeWindow) == clusterWindow  and float(l[1]) == float(m.time):
+                                            if m.composition == l[0] and float(m.time) == clusterTime and float(m.timeWindow) == clusterWindow  and float(l[1]) == float(m.time) and float(l[2]) == float(m.timeWindow):
                                                 for n in m.isotopes:
                                                     if int(n.charge) == i:
                                                         totalIntensity += max(0, n.obsInt - n.background)
@@ -2229,7 +2248,7 @@ class App():
                                 for l in j[1]:
                                     for m in clusterValues:
                                         try:
-                                            if l.composition == k[0] and float(l.time) == m[0] and float(l.timeWindow) == m[1] and float(k[1]) == float(l.time):
+                                            if l.composition == k[0] and float(l.time) == m[0] and float(l.timeWindow) == m[1] and float(k[1]) == float(l.time) and float(k[2]) == float(l.timeWindow):
                                                 flag = 1
                                                 for n in l.isotopes:
                                                     if int(n.charge) == i:
@@ -2263,7 +2282,7 @@ class App():
                             sumInt = 0
                             for k in i[1]:
                                 try:
-                                    if k.composition == j[0] and float(k.time) == float(j[1]):
+                                    if k.composition == j[0] and float(k.time) == float(j[1]) and float(k.timeWindow) == float(j[2]):
                                         for l in k.isotopes:
                                             sumInt += l.background
                                 except AttributeError:
@@ -2282,7 +2301,7 @@ class App():
                         for j in compositions:
                             for k in i[1]:
                                 try:
-                                    if k.composition == j[0] and float(k.time) == float(j[1]):
+                                    if k.composition == j[0] and float(k.time) == float(j[1]) and float(k.timeWindow) == float(j[2]):
                                         for l in k.isotopes:
                                             if int(l.charge) < minCharge:
                                                 minCharge = int(l.charge)
@@ -2302,7 +2321,7 @@ class App():
                                 sumInt = 0
                                 for l in j[1]:
                                     try:
-                                        if l.composition == k[0] and float(l.time) == float(k[1]):
+                                        if l.composition == k[0] and float(l.time) == float(k[1]) and float(l.timeWindow) == float(k[2]):
                                             for m in l.isotopes:
                                                 if int(m.charge) == i:
                                                     sumInt += m.background
@@ -2330,7 +2349,7 @@ class App():
                             sumInt = 0
                             for k in i[1]:
                                 try:
-                                    if k.composition == j[0] and float(k.time) == float(j[1]):
+                                    if k.composition == j[0] and float(k.time) == float(j[1]) and float(k.timeWindow) == float(j[2]):
                                         for l in k.isotopes:
                                             sumInt += l.noise
                                 except AttributeError:
@@ -2349,7 +2368,7 @@ class App():
                         for j in compositions:
                             for k in i[1]:
                                 try:
-                                    if k.composition == j[0] and float(k.time) == float(j[1]):
+                                    if k.composition == j[0] and float(k.time) == float(j[1]) and float(k.timeWindow) == float(j[2]):
                                         for l in k.isotopes:
                                             if int(l.charge) < minCharge:
                                                 minCharge = int(l.charge)
@@ -2369,7 +2388,7 @@ class App():
                                 sumInt = 0
                                 for l in j[1]:
                                     try:
-                                        if l.composition == k[0] and float(l.time) == float(k[1]):
+                                        if l.composition == k[0] and float(l.time) == float(k[1]) and float(l.timeWindow) == float(k[2]):
                                             for m in l.isotopes:
                                                 if int(m.charge) == i:
                                                     sumInt += m.noise
@@ -2462,7 +2481,7 @@ class App():
                     for j in compositions:
                         for k in i[1]:
                             try:
-                                if k.composition == j[0] and float(k.time) == float(j[1]):
+                                if k.composition == j[0] and float(k.time) == float(j[1]) and float(k.timeWindow) == float(j[2]):
                                     for l in k.isotopes:
                                         if int(l.charge) < minCharge:
                                             minCharge = int(l.charge)
@@ -2484,7 +2503,7 @@ class App():
                             actualMass = 0.0
                             for l in j[1]:
                                 try:
-                                    if l.composition == k[0] and float(l.time) == float(k[1]):
+                                    if l.composition == k[0] and float(l.time) == float(k[1]) and float(l.timeWindow) == float(k[2]):
                                         for m in l.isotopes:
                                             if m.expInt > relContribution and int(m.charge) == i:
                                                 relContribution = m.expInt
@@ -2510,7 +2529,7 @@ class App():
                     for j in compositions:
                         for k in i[1]:
                             try:
-                                if k.composition == j[0] and float(k.time) == float(j[1]):
+                                if k.composition == j[0] and float(k.time) == float(j[1]) and float(k.timeWindow) == float(j[2]):
                                     for l in k.isotopes:
                                         if int(l.charge) < minCharge:
                                             minCharge = int(l.charge)
@@ -2532,7 +2551,7 @@ class App():
                             qc = 0
                             for l in j[1]:
                                 try:
-                                    if l.composition == k[0] and float(l.time) == float(k[1]):
+                                    if l.composition == k[0] and float(l.time) == float(k[1]) and float(l.timeWindow) == float(k[2]):
                                         for m in l.isotopes:
                                             if int(m.charge) == i:
                                                 sumInt += max(float(m.obsInt) - float(m.background),0)
@@ -2563,7 +2582,7 @@ class App():
                     for j in compositions:
                         for k in i[1]:
                             try:
-                                if k.composition == j[0] and float(k.time) == float(j[1]):
+                                if k.composition == j[0] and float(k.time) == float(j[1]) and float(k.timeWindow) == float(j[2]):
                                     for l in k.isotopes:
                                         if int(l.charge) < minCharge:
                                             minCharge = int(l.charge)
@@ -2584,7 +2603,7 @@ class App():
                             SN = 0
                             for l in j[1]:
                                 try:
-                                    if l.composition == k[0] and float(l.time) == float(k[1]):
+                                    if l.composition == k[0] and float(l.time) == float(k[1]) and float(l.timeWindow) == float(k[2]):
                                         for m in l.isotopes:
                                             if m.expInt > expInt and int(m.charge) == i:
                                                 try:
