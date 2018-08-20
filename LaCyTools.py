@@ -221,7 +221,7 @@ class App():
         # VARIABLES
         self.master = master
         self.version = "1.1.0-alpha"
-        self.build = "20180820a"
+        self.build = "20180820b"
         self.inputFile = ""
         self.inputFileIdx = 0
         self.refFile = ""
@@ -1512,7 +1512,6 @@ class App():
                 masses  = "["+", ".join(map(str, masses))+"]" 
             else:
                 masses += "NA"
-            print masses, type(masses)
             header += "\t"+masses
         header += "\n"
         return header
