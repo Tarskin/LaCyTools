@@ -50,6 +50,7 @@ EXTENSION = ".mzXML"            # File types that will be used by MassyTools
 EXTRACTION = "aligned"          # Pre-fix required for files to be extracted
 OUTPUT = "Summary.txt"          # Name of the output file
 SETTINGS_FILE = "Settings.txt"  # Name of the settings file
+OVERWRITE_ANALYTES = True       # This option specifies if LaCyTools should overwrite an existing analytes.ref file or not
 
 # Alignment Parameters
 ALIGNMENT_TIME_WINDOW = 10      # The +/- time window that the program is allowed to look for the feature for alignment (EIC time axis)
@@ -222,7 +223,7 @@ class App():
         # VARIABLES
         self.master = master
         self.version = "1.1.0-alpha"
-        self.build = "20181102a"
+        self.build = "20181102b"
         self.inputFile = ""
         self.inputFileIdx = 0
         self.refFile = ""
@@ -3139,71 +3140,73 @@ class App():
                 lines.append(line)
         # Chop composition into sub units and get exact mass & carbon count
         analyteFile = os.path.join(self.batchFolder,"analytes.ref")
-        #if os.path.exists(analyteFile) == True:
-        #   TODO: MAKE THIS CHECK EXISTING ANALYTE FILE IF IT MATCHES SUPPLIED REF FILE
-        #   print "USING EXISTING REFERENCE FILE"
-        #   return
-        if self.log == True:
-            with open('LaCyTools.log', 'a') as flog:
-                flog.write(str(datetime.now())+ "\tPRE-PROCESSING REFERENCE FILE\n")
-        with open(analyteFile,'w') as fw:
-            fw.write("# Peak\tm/z\tRel Area\twindow\trt\ttime window\tCalibration\n")
-            for i in lines:
-                try:
-                    if i[0] == "#":
-                        continue
-                except IndexError:
-                    if self.log == True:
-                        with open('LaCyTools.log', 'a') as flog:
-                            flog.write(str(datetime.now())+ "\tIncorrect line observed in: "+str(analyteFile)+"\n")
-                except:
-                    if self.log == True:
-                        with open('LaCyTools.log', 'a') as flog:
-                            flog.write(str(datetime.now())+ "\tUnexpected Error: "+str(sys.exc_info()[0])+"\n")
-                i = i.split("\t")
-                # Initialize variables
-                massWindow = MASS_WINDOW
-                timeWindow = TIME_WINDOW
-                minCharge = MIN_CHARGE
-                maxCharge = MAX_CHARGE
-                calibration = False
-                # Check optional variables
-                if len(i) >= 2:
-                    time = float(i[1])
-                if len(i) > 2:
-                    if i[2]:
-                        massWindow = float(i[2])
-                if len(i) > 3:
-                    if i[3]:
-                        timeWindow = int(i[3])
-                if len(i) > 4:
-                    if i[4]:
-                        minCharge = int(i[4])
-                if len(i) > 5:
-                    if i[5]:
-                        maxCharge = int(i[5])
-                if len(i) > 6:
-                    if i[6]:
-                        calibration = True
-                # End of variable check
-                values =  self.parseAnalyte(i[0])
-                totals = self.getChanceNetwork(values)
-                results = self.mergeChances(totals)
-                results = self.selectIsotopes(results)
-                # Write analyte file
-                for j in range(minCharge,maxCharge+1):
-                    # Adding the padding windows to determine IPQ
-                    for k in range(-EXTRACTION_PADDING, 0):
-                        fw.write(str(i[0])+"_"+str(j)+"_"+str(k)+"\t"+str((results[0][0]+k*BLOCKS[CHARGE_CARRIER[0]]['mass']+j*BLOCKS[CHARGE_CARRIER[0]]['mass'])/j)+"\t"+str(0)+"\t"+str(massWindow)+"\t"+str(time)+"\t"+str(timeWindow)+"\tFalse\n")
-                    maxIsotope = max(results,key=lambda tup:tup[1])[1]
-                    for k in results:
-                        if calibration == True and k[1] == maxIsotope:
-                            fw.write(str(i[0])+"_"+str(j)+"_"+str(k[2])+"\t"+str((k[0]+j*BLOCKS[CHARGE_CARRIER[0]]['mass'])/j)+"\t"+str(k[1])+"\t"+str(massWindow)+"\t"+str(time)+"\t"+str(timeWindow)+"\tTrue\n")
-                        else:
-                            fw.write(str(i[0])+"_"+str(j)+"_"+str(k[2])+"\t"+str((k[0]+j*BLOCKS[CHARGE_CARRIER[0]]['mass'])/j)+"\t"+str(k[1])+"\t"+str(massWindow)+"\t"+str(time)+"\t"+str(timeWindow)+"\tFalse\n")
-        if self.log == True:
-            with open('LaCyTools.log', 'a') as flog:
-                flog.write(str(datetime.now())+ "\tPRE-PROCESSING COMPLETE\n")
+        if OVERWRITE_ANALYTES == False:
+            print "USING EXISTING REFERENCE FILE"
+            return
+        elif OVERWRITE_ANALYTES == True:
+            if self.log == True:
+                with open('LaCyTools.log', 'a') as flog:
+                    flog.write(str(datetime.now())+ "\tPRE-PROCESSING REFERENCE FILE\n")
+            with open(analyteFile,'w') as fw:
+                fw.write("# Peak\tm/z\tRel Area\twindow\trt\ttime window\tCalibration\n")
+                for i in lines:
+                    try:
+                        if i[0] == "#":
+                            continue
+                    except IndexError:
+                        if self.log == True:
+                            with open('LaCyTools.log', 'a') as flog:
+                                flog.write(str(datetime.now())+ "\tIncorrect line observed in: "+str(analyteFile)+"\n")
+                    except:
+                        if self.log == True:
+                            with open('LaCyTools.log', 'a') as flog:
+                                flog.write(str(datetime.now())+ "\tUnexpected Error: "+str(sys.exc_info()[0])+"\n")
+                    i = i.split("\t")
+                    # Initialize variables
+                    massWindow = MASS_WINDOW
+                    timeWindow = TIME_WINDOW
+                    minCharge = MIN_CHARGE
+                    maxCharge = MAX_CHARGE
+                    calibration = False
+                    # Check optional variables
+                    if len(i) >= 2:
+                        time = float(i[1])
+                    if len(i) > 2:
+                        if i[2]:
+                            massWindow = float(i[2])
+                    if len(i) > 3:
+                        if i[3]:
+                            timeWindow = int(i[3])
+                    if len(i) > 4:
+                        if i[4]:
+                            minCharge = int(i[4])
+                    if len(i) > 5:
+                        if i[5]:
+                            maxCharge = int(i[5])
+                    if len(i) > 6:
+                        if i[6]:
+                            calibration = True
+                    # End of variable check
+                    values =  self.parseAnalyte(i[0])
+                    totals = self.getChanceNetwork(values)
+                    results = self.mergeChances(totals)
+                    results = self.selectIsotopes(results)
+                    # Write analyte file
+                    for j in range(minCharge,maxCharge+1):
+                        # Adding the padding windows to determine IPQ
+                        for k in range(-EXTRACTION_PADDING, 0):
+                            fw.write(str(i[0])+"_"+str(j)+"_"+str(k)+"\t"+str((results[0][0]+k*BLOCKS[CHARGE_CARRIER[0]]['mass']+j*BLOCKS[CHARGE_CARRIER[0]]['mass'])/j)+"\t"+str(0)+"\t"+str(massWindow)+"\t"+str(time)+"\t"+str(timeWindow)+"\tFalse\n")
+                        maxIsotope = max(results,key=lambda tup:tup[1])[1]
+                        for k in results:
+                            if calibration == True and k[1] == maxIsotope:
+                                fw.write(str(i[0])+"_"+str(j)+"_"+str(k[2])+"\t"+str((k[0]+j*BLOCKS[CHARGE_CARRIER[0]]['mass'])/j)+"\t"+str(k[1])+"\t"+str(massWindow)+"\t"+str(time)+"\t"+str(timeWindow)+"\tTrue\n")
+                            else:
+                                fw.write(str(i[0])+"_"+str(j)+"_"+str(k[2])+"\t"+str((k[0]+j*BLOCKS[CHARGE_CARRIER[0]]['mass'])/j)+"\t"+str(k[1])+"\t"+str(massWindow)+"\t"+str(time)+"\t"+str(timeWindow)+"\tFalse\n")
+            if self.log == True:
+                with open('LaCyTools.log', 'a') as flog:
+                    flog.write(str(datetime.now())+ "\tPRE-PROCESSING COMPLETE\n")
+        else:
+            print "Incorrect value for the OVERWRITE_ANALYTES parameter"
 
     ####################################################
     # END OF FUNCTIONS RELATED TO PARSING ANALYTE FILE #
