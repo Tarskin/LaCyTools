@@ -72,6 +72,7 @@ CHARGE_CARRIER = ['proton']     # The charge carrier that is used for ionization
 EXTRACTION_TYPE = 2             # 1 = Max, 0 = Total and 2 = Area
 MASS_WINDOW = 0.2               # The +/- m/z window used around each feature for extraction
 TIME_WINDOW = 8                 # The +/- time window that will be used around a cluster, to create the sum spectrum
+EXTRACTION_PADDING = 2          # total number of additional windows to be examined and quantified (for IPQ)
 MIN_CHARGE = 2                  # The minimum charge state that the program will integrate for all features (unless overwritten in the composition file)
 MAX_CHARGE = 3                  # The maximum charge state that the program will integrate for all features (unless overwritten in the composition file)
 #MIN_CONTRIBUTION = 0.01        # Minimum contribution to isotopic distrubition to be included (NOT BEING USED ATM)
@@ -221,7 +222,7 @@ class App():
         # VARIABLES
         self.master = master
         self.version = "1.1.0-alpha"
-        self.build = "20180820b"
+        self.build = "20181102a"
         self.inputFile = ""
         self.inputFileIdx = 0
         self.refFile = ""
@@ -346,6 +347,7 @@ class App():
             global MIN_TOTAL
             global BACKGROUND_WINDOW
             global S_N_CUTOFF
+            global EXTRACTION_PADDING
             ALIGNMENT_TIME_WINDOW = float(self.alignTimeWindow.get())
             ALIGNMENT_MASS_WINDOW = float(self.alignMassWindow.get())
             ALIGNMENT_S_N_CUTOFF = int(self.alignSn.get())
@@ -358,6 +360,7 @@ class App():
             TIME_WINDOW = float(self.extracTimeWindow.get())
             MIN_CHARGE = int(self.extracMinCharge.get())
             MAX_CHARGE = int(self.extracMaxCharge.get())
+            EXTRACTION_PADDING = int(self.extracPad.get())
             CHARGE_CARRIER = []
             for i in UNITS:
                 if str(i) == master.chargeCarrierVar.get() and BLOCKS[i]['available_for_charge_carrier'] == 1:
@@ -394,6 +397,7 @@ class App():
                 fw.write("MIN_TOTAL\t"+str(float(self.extracMinTotal.get()))+"\n")
                 fw.write("BACKGROUND_TOTAL\t"+str(int(self.extracBack.get()))+"\n")
                 fw.write("S_N_CUTOFF\t"+str(int(self.extracSnCutoff.get()))+"\n")
+                fw.write("EXTRACTION_PADDING\t"+str(int(self.extracPad.get()))+"\n")
         
         master.measurementWindow = 1
         top = self.top = Toplevel()
@@ -457,42 +461,47 @@ class App():
         self.extracTimeWindow = Entry(top)
         self.extracTimeWindow.insert(0, TIME_WINDOW)
         self.extracTimeWindow.grid(row=13, column=1, sticky=W)
+        self.extracPadLabel = Label(top, text="Extraction window padding")
+        self.extracPadLabel.grid(row=14, column=0, sticky=W)
+        self.extracPad = Entry(top)
+        self.extracPad.insert(0, EXTRACTION_PADDING)
+        self.extracPad.grid(row=14, column=1, sticky=W)
         self.extracMinChargeLabel = Label(top, text="Minimum charge state")
-        self.extracMinChargeLabel.grid(row=14, column=0, sticky=W)
+        self.extracMinChargeLabel.grid(row=15, column=0, sticky=W)
         self.extracMinCharge = Entry(top)
         self.extracMinCharge.insert(0, MIN_CHARGE)
-        self.extracMinCharge.grid(row=14, column=1, sticky=W)
+        self.extracMinCharge.grid(row=15, column=1, sticky=W)
         self.extracMaxChargeLabel = Label(top, text="Maximum charge state")
-        self.extracMaxChargeLabel.grid(row=15, column=0, sticky=W)
+        self.extracMaxChargeLabel.grid(row=16, column=0, sticky=W)
         self.extracMaxCharge = Entry(top)
         self.extracMaxCharge.insert(0, MAX_CHARGE)
-        self.extracMaxCharge.grid(row=15, column=1, sticky=W)
+        self.extracMaxCharge.grid(row=16, column=1, sticky=W)
         for i in UNITS:
             if BLOCKS[i]['available_for_charge_carrier'] == 1:
                 options.append(i)
         self.chargeCarrierLabel = Label(top, text="Charge carrier")
-        self.chargeCarrierLabel.grid(row=16, column=0, sticky=W)
+        self.chargeCarrierLabel.grid(row=17, column=0, sticky=W)
         self.chargeCarrier = OptionMenu(top, self.chargeCarrierVar, *options)
-        self.chargeCarrier.grid(row=16, column=1, sticky=W)
+        self.chargeCarrier.grid(row=17, column=1, sticky=W)
         self.extracMinTotalLabel = Label(top, text="Minimum isotopic fraction")
-        self.extracMinTotalLabel.grid(row=17, column=0, sticky=W)
+        self.extracMinTotalLabel.grid(row=18, column=0, sticky=W)
         self.extracMinTotal = Entry(top)
         self.extracMinTotal.insert(0, MIN_TOTAL)
-        self.extracMinTotal.grid(row=17, column=1, sticky=W)
+        self.extracMinTotal.grid(row=18, column=1, sticky=W)
         self.extracBackLabel = Label(top, text="Background detection window")
-        self.extracBackLabel.grid(row=18, column=0, sticky=W)
+        self.extracBackLabel.grid(row=19, column=0, sticky=W)
         self.extracBack = Entry(top)
         self.extracBack.insert(0, BACKGROUND_WINDOW)
-        self.extracBack.grid(row=18, column=1, sticky=W)
+        self.extracBack.grid(row=19, column=1, sticky=W)
         self.extracSnCutoffLabel = Label(top, text="Spectra QC S/N cutoff")
-        self.extracSnCutoffLabel.grid(row=19, column=0, sticky=W)
+        self.extracSnCutoffLabel.grid(row=20, column=0, sticky=W)
         self.extracSnCutoff = Entry(top)
         self.extracSnCutoff.insert(0, S_N_CUTOFF)
-        self.extracSnCutoff.grid(row=19,column=1, sticky=W)
+        self.extracSnCutoff.grid(row=20,column=1, sticky=W)
         self.ok = Button(top,text = 'Ok', command = lambda: close(self))
-        self.ok.grid(row = 20, column = 0, sticky = W)
+        self.ok.grid(row = 21, column = 0, sticky = W)
         self.save = Button(top, text = 'Save', command = lambda: save(self))
-        self.save.grid(row = 20, column = 1, sticky = E)
+        self.save.grid(row = 21, column = 1, sticky = E)
         # Tooltips
         createToolTip(self.alignTimeWindowLabel,"The time window in seconds around the specified time of an alignment feature that LaCyTools is allowed to look for the maximum intensity of each feature.")
         createToolTip(self.alignMassWindowLabel,"The m/z window in Thompson around the specified exact m/z of an alignment feature, that LaCyTools will use to find the maximum of each feature.")
@@ -507,6 +516,7 @@ class App():
         createToolTip(self.extracMinChargeLabel,"The minimum charge state that LaCyTools will attempt to use in calibration and quantitation for all features listed in the analyte reference file.")
         createToolTip(self.extracMaxChargeLabel,"The maximum charge state that LaCyTools will attempt to use in calibration and quantitation for all features listed in the analyte reference file.")
         createToolTip(self.chargeCarrierLabel,"The charge carrier that is applied to all specified analytes for quantitation.")
+        createToolTip(self.extracPadLabel,"The number of windows before the regular analyte windows that will be examined to determine the IPQ.")
         createToolTip(self.extracMinTotalLabel,"The minimum fraction of the theoretical isotopic pattern that LaCyTools will use for quantitation. For example, a value of 0.95 means that LaCyTools will quantify isotopes until the sum of the quantified isotopes exceeds 0.95 of the total theoretcal isotopic pattern.")
         createToolTip(self.extracBackLabel,"The mass window in Dalton that LaCyTools is allowed to look for the local background and noise for each analyte. For example, a value of 10 means that LaCyTools will look from 990 m/z to 1010 m/z for an analyte with an m/z of 1000.")
         createToolTip(self.extracSnCutoffLabel,"The minimum S/N of an analyte to be included in the spectral QC. Specifically, for the output that lists what fraction of the total quantified analytes passed the here specified S/N value.")
@@ -3182,6 +3192,9 @@ class App():
                 results = self.selectIsotopes(results)
                 # Write analyte file
                 for j in range(minCharge,maxCharge+1):
+                    # Adding the padding windows to determine IPQ
+                    for k in range(-EXTRACTION_PADDING, 0):
+                        fw.write(str(i[0])+"_"+str(j)+"_"+str(k)+"\t"+str((results[0][0]+k*BLOCKS[CHARGE_CARRIER[0]]['mass']+j*BLOCKS[CHARGE_CARRIER[0]]['mass'])/j)+"\t"+str(0)+"\t"+str(massWindow)+"\t"+str(time)+"\t"+str(timeWindow)+"\tFalse\n")
                     maxIsotope = max(results,key=lambda tup:tup[1])[1]
                     for k in results:
                         if calibration == True and k[1] == maxIsotope:
