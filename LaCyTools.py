@@ -223,7 +223,7 @@ class App():
         # VARIABLES
         self.master = master
         self.version = "1.1.0-alpha"
-        self.build = "20181102b"
+        self.build = "181108a"
         self.inputFile = ""
         self.inputFileIdx = 0
         self.refFile = ""
@@ -1519,11 +1519,11 @@ class App():
                 else:
                     if str(analyte) == str(i[0]) and float(time) == float(i[1]) and float(timewindow) == float(i[2]) and relative_intensity == current_relative_intensity and int(chargestate) == int(charge):
                         masses.append(float(j[1]))
-            if masses:
-                masses  = "["+", ".join(map(str, masses))+"]" 
-            else:
-                masses += "NA"
-            header += "\t"+masses
+            masses  = "["+", ".join(map(str, masses))+"]" 
+            try:
+                header += "\t"+masses
+            except TypeError:
+                header += "\tNA"
         header += "\n"
         return header
 
