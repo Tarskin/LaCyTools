@@ -38,6 +38,7 @@ import matplotlib
 import numpy
 import os
 import struct
+import sys
 import zlib
 import tables
 # Dev Imports
@@ -225,7 +226,7 @@ class App():
         # VARIABLES
         self.master = master
         self.version = "1.1.0-alpha"
-        self.build = "190205a"
+        self.build = "190207a"
         self.inputFile = ""
         self.inputFileIdx = 0
         self.refFile = ""
@@ -591,7 +592,7 @@ class App():
                 try:
                     if line[0][0].isdigit():
                         line = line.rstrip().split()
-                        features.append(map(float,line))
+                        features.append([float(x) for x in line])
                 except IndexError:
                     print ("Incorrect line observed in: ")+str(file)
                     if self.log == True:
@@ -842,22 +843,22 @@ class App():
         # barWindow = Tk()
         barWindow = self.top = tk.Toplevel()
         barWindow.title("Progress Bar")
-        al = Label(barWindow, text="Alignment", padx=25)
-        al.grid(row=0, column=0, sticky="W")
+        al = tk.Label(barWindow, text="Alignment", padx=25)
+        al.grid(row=0, column=0, sticky=tk.W)
         ft = ttk.Frame(barWindow)
-        ft.grid(row=1, columnspan=2, sticky="")
-        perc1 = Label(barWindow, textvariable=self.alPerc)
+        ft.grid(row=1, columnspan=2)
+        perc1 = tk.Label(barWindow, textvariable=self.alPerc)
         perc1.grid(row=0, column=1, padx=25)
         progressbar = ttk.Progressbar(ft, length=100, mode='determinate')
-        progressbar.grid(row=1, columnspan=2, sticky="")
-        ext = Label(barWindow, text="Quantitation", padx=25)
-        ext.grid(row=2, column=0, sticky="W")
+        progressbar.grid(row=1, columnspan=2)
+        ext = tk.Label(barWindow, text="Quantitation", padx=25)
+        ext.grid(row=2, column=0, sticky=tk.W)
         ft2 = ttk.Frame(barWindow)
-        ft2.grid(row=3, columnspan=2, sticky="")
-        perc2 = Label(barWindow, textvariable=self.extPerc)
+        ft2.grid(row=3, columnspan=2)
+        perc2 = tk.Label(barWindow, textvariable=self.extPerc)
         perc2.grid(row=2, column=1, padx=25)
         progressbar2 = ttk.Progressbar(ft2, length=100, mode='determinate')
-        progressbar2.grid(row=3, columnspan=2, sticky="")
+        progressbar2.grid(row=3, columnspan=2)
         ###################
         # END OF BAR CODE #
         ###################
@@ -1521,7 +1522,10 @@ class App():
                 else:
                     if str(analyte) == str(i[0]) and float(time) == float(i[1]) and float(timewindow) == float(i[2]) and relative_intensity == current_relative_intensity and int(chargestate) == int(charge):
                         masses.append(float(j[1]))
-            masses  = "["+", ".join(map(str, masses))+"]" 
+            if masses:
+                masses  = "["+", ".join(map(str, masses))+"]" 
+            else:
+                masses = ""
             try:
                 header += "\t"+masses
             except TypeError:
@@ -1547,7 +1551,7 @@ class App():
                 name = str(file)
                 name = os.path.split(str(name))[-1]
                 current = None
-                for _ in xrange(2):
+                for _ in range(2):
                     next(fr)
                 for line in fr:
                     if not line:
@@ -1708,7 +1712,7 @@ class App():
                 # Per charge state #
                 ####################
                 if self.analytePerCharge.get() == 1:
-                    minCharge = sys.maxint
+                    minCharge = sys.maxsize
                     maxCharge = 0
                     for i in total:
                         for j in compositions:
@@ -1722,7 +1726,7 @@ class App():
                                                 maxCharge = int(l.charge)
                                 except AttributeError:
                                     pass
-                    for i in xrange(minCharge,maxCharge+1):
+                    for i in range(minCharge,maxCharge+1):
                         # This is a time intensive function
                         # Header
                         header = "Absolute Intensity ("+str(i)+"+)"+self.createHeader(compositions, ref, i)
@@ -1781,7 +1785,7 @@ class App():
                 # Per charge state #
                 ####################
                 if self.analytePerCharge.get() == 1:
-                    minCharge = sys.maxint
+                    minCharge = sys.maxsize
                     maxCharge = 0
                     for i in total:
                         for j in compositions:
@@ -1795,7 +1799,7 @@ class App():
                                                 maxCharge = int(l.charge)
                                 except AttributeError:
                                     pass
-                    for i in xrange(minCharge,maxCharge+1):
+                    for i in range(minCharge,maxCharge+1):
                         # This is a time intensive function
                         # Header
                         header = "Absolute Intensity (Background Subtracted, "+str(i)+"+)"+self.createHeader(compositions, ref, i)
@@ -1863,7 +1867,7 @@ class App():
                 # Per charge state #
                 ####################
                 if self.analytePerCharge.get() == 1:
-                    minCharge = sys.maxint
+                    minCharge = sys.maxsize
                     maxCharge = 0
                     for i in total:
                         for j in compositions:
@@ -1877,7 +1881,7 @@ class App():
                                                 maxCharge = int(l.charge)
                                 except AttributeError:
                                     pass
-                    for i in xrange(minCharge,maxCharge+1):
+                    for i in range(minCharge,maxCharge+1):
                         # This is a time intensive function
                         # Header
                         header = "Relative Intensity ("+str(i)+"+)"+self.createHeader(compositions, ref)
@@ -1977,7 +1981,7 @@ class App():
                 # Per charge state #
                 ####################
                 if self.analytePerCharge.get() == 1:
-                    minCharge = sys.maxint
+                    minCharge = sys.maxsize
                     maxCharge = 0
                     for i in total:
                         for j in compositions:
@@ -1991,7 +1995,7 @@ class App():
                                                 maxCharge = int(l.charge)
                                 except AttributeError:
                                     pass
-                    for i in xrange(minCharge,maxCharge+1):
+                    for i in range(minCharge,maxCharge+1):
                         # This is a time intensive function
                         # Header
                         header = "Relative Intensity (Cluster Normalization, "+str(i)+"+)"+self.createHeader(compositions, ref, i)
@@ -2089,7 +2093,7 @@ class App():
                 # Per charge state #
                 ####################
                 if self.analytePerCharge.get() == 1:
-                    minCharge = sys.maxint
+                    minCharge = sys.maxsize
                     maxCharge = 0
                     for i in total:
                         for j in compositions:
@@ -2103,7 +2107,7 @@ class App():
                                                 maxCharge = int(l.charge)
                                 except AttributeError:
                                     pass
-                    for i in xrange(minCharge,maxCharge+1):
+                    for i in range(minCharge,maxCharge+1):
                         # This is a time intensive function
                         # Header
                         header = "Relative Intensity (Background Subtracted, "+str(i)+"+)"+self.createHeader(compositions, ref, i)
@@ -2201,7 +2205,7 @@ class App():
                 # Per charge state #
                 ####################
                 if self.analytePerCharge.get() == 1:
-                    minCharge = sys.maxint
+                    minCharge = sys.maxsize
                     maxCharge = 0
                     for i in total:
                         for j in compositions:
@@ -2215,7 +2219,7 @@ class App():
                                                 maxCharge = int(l.charge)
                                 except AttributeError:
                                     pass
-                    for i in xrange(minCharge,maxCharge+1):
+                    for i in range(minCharge,maxCharge+1):
                         # This is a time intensive function
                         # Header
                         header = "Relative Intensity (Background Subtracted, Cluster Normalization, "+str(i)+"+)"+self.createHeader(compositions, ref, i)
@@ -2301,7 +2305,7 @@ class App():
                 # Per charge state #
                 ####################
                 if self.analytePerCharge.get() == 1:
-                    minCharge = sys.maxint
+                    minCharge = sys.maxsize
                     maxCharge = 0
                     for i in total:
                         for j in compositions:
@@ -2315,7 +2319,7 @@ class App():
                                                 maxCharge = int(l.charge)
                                 except AttributeError:
                                     pass
-                    for i in xrange(minCharge,maxCharge+1):
+                    for i in range(minCharge,maxCharge+1):
                         # This is a time intensive function
                         # Header
                         header = "Background ("+str(i)+"+)"+str(i)+"+)"+self.createHeader(compositions, ref, i)
@@ -2368,7 +2372,7 @@ class App():
                 # Per charge state #
                 ####################
                 if self.analytePerCharge.get() == 1:
-                    minCharge = sys.maxint
+                    minCharge = sys.maxsize
                     maxCharge = 0
                     for i in total:
                         for j in compositions:
@@ -2382,7 +2386,7 @@ class App():
                                                 maxCharge = int(l.charge)
                                 except AttributeError:
                                     pass
-                    for i in xrange(minCharge,maxCharge+1):
+                    for i in range(minCharge,maxCharge+1):
                         # This is a time intensive function
                         # Header
                         header = "Noise ("+str(i)+"+)"+self.createHeader(compositions, ref, i)
@@ -2481,7 +2485,7 @@ class App():
             # Analyte Mass Accuracy (in PPM) #
             ##################################
             if self.qualityControl.get() == 1:
-                minCharge = sys.maxint
+                minCharge = sys.maxsize
                 maxCharge = 0
                 for i in total:
                     for j in compositions:
@@ -2495,7 +2499,7 @@ class App():
                                             maxCharge = int(l.charge)
                             except AttributeError:
                                 pass
-                for i in xrange(minCharge,maxCharge+1):
+                for i in range(minCharge,maxCharge+1):
                     # This is a time intensive function
                     # Header
                     header = "Mass Accuracy [ppm] ("+str(i)+"+)"+self.createHeader(compositions, ref, i)
@@ -2529,7 +2533,7 @@ class App():
             # Isotopic Pattern Quality #
             ############################
             if self.qualityControl.get() == 1:
-                minCharge = sys.maxint
+                minCharge = sys.maxsize
                 maxCharge = 0
                 for i in total:
                     for j in compositions:
@@ -2543,7 +2547,7 @@ class App():
                                             maxCharge = int(l.charge)
                             except AttributeError:
                                 pass
-                for i in xrange(minCharge,maxCharge+1):
+                for i in range(minCharge,maxCharge+1):
                     # This is a time intensive function
                     # Header
                     header = "Isotopic Pattern Quality ("+str(i)+"+)"+self.createHeader(compositions, ref, i)
@@ -2582,7 +2586,7 @@ class App():
             # Signal to Noise ratio #
             #########################
             if self.qualityControl.get() == 1:
-                minCharge = sys.maxint
+                minCharge = sys.maxsize
                 maxCharge = 0
                 for i in total:
                     for j in compositions:
@@ -2596,7 +2600,7 @@ class App():
                                             maxCharge = int(l.charge)
                             except AttributeError:
                                 pass
-                for i in xrange(minCharge,maxCharge+1):
+                for i in range(minCharge,maxCharge+1):
                     # This is a time intensive function
                     # Header
                     header = "S/N ("+str(i)+"+)"+self.createHeader(compositions, ref, i)
@@ -3010,7 +3014,7 @@ class App():
         other lists (1 for each isotopic state).
         OUTPUT: A list of float tuples (isotopic m/z, isotopic chance)
         """
-        foo = mass,carbons,hydrogens,nitrogens,oxygens17,oxygens18,sulfurs33,sulfurs34,sulfurs36
+        mass,carbons,hydrogens,nitrogens,oxygens17,oxygens18,sulfurs33,sulfurs34,sulfurs36 = foo
         totals = []
         for x in itertools.product(carbons,hydrogens,nitrogens,oxygens17,oxygens18,sulfurs33,sulfurs34,sulfurs36):
             i, j, k, l, m, n, o, p = x
