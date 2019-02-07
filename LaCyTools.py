@@ -226,7 +226,7 @@ class App():
         # VARIABLES
         self.master = master
         self.version = "1.1.0-alpha"
-        self.build = "190207a"
+        self.build = "190207b"
         self.inputFile = ""
         self.inputFileIdx = 0
         self.refFile = ""
@@ -3094,16 +3094,32 @@ class App():
         numSulfurs = 0
         totalElements = 0
         units = ["".join(x) for _,x in itertools.groupby(Analyte,key=str.isdigit)]
-        # Calculate the bass composition values\
+        # Calculate the bass composition values
         for index,j in enumerate(units):
+            present_flag = False
             for k in UNITS:
-                    if j == k:
-                        mass += float(BLOCKS[k]['mass']) * float(units[index+1])
-                        numCarbons += int(BLOCKS[k]['carbons']) * int(units[index+1])
-                        numHydrogens += int(BLOCKS[k]['hydrogens']) * int(units[index+1])
-                        numNitrogens += int(BLOCKS[k]['nitrogens']) * int(units[index+1])
-                        numOxygens += int(BLOCKS[k]['oxygens']) * int(units[index+1])
-                        numSulfurs += int(BLOCKS[k]['sulfurs']) * int(units[index+1])
+                if j == k:
+                    try:
+                        int(units[index+1])
+                    except:
+                        messagebox.showinfo(
+                            "Error Message","There is no number "+
+                            "specified for building block "+
+                            str(j))
+                        sys.exit() 
+                    mass += float(BLOCKS[k]['mass']) * float(units[index+1])
+                    numCarbons += int(BLOCKS[k]['carbons']) * int(units[index+1])
+                    numHydrogens += int(BLOCKS[k]['hydrogens']) * int(units[index+1])
+                    numNitrogens += int(BLOCKS[k]['nitrogens']) * int(units[index+1])
+                    numOxygens += int(BLOCKS[k]['oxygens']) * int(units[index+1])
+                    numSulfurs += int(BLOCKS[k]['sulfurs']) * int(units[index+1])
+                    present_flag = True
+            if present_flag == False and j.isalpha():
+                messagebox.showinfo(
+                    "Error Message","The specified building block of "+
+                    str(j)+" is unknown. Did you create the building "+
+                    "block in the LaCyTools blocks directory?")
+                sys.exit()
         # Attach the mass modifier values
         for j in MASS_MODIFIERS:
             mass += float(BLOCKS[j]['mass'])
