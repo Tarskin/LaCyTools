@@ -16,12 +16,17 @@
 # http://www.apache.org/licenses/LICENSE-2.0
 
 from datetime import datetime
-from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolbar2TkAgg
+from matplotlib.backends.backend_tkagg import (
+    FigureCanvasTkAgg, NavigationToolbar2Tk
+)
 from scipy.interpolate import InterpolatedUnivariateSpline
 import scipy.optimize
 from scipy.optimize import curve_fit
-from Tkinter import *
-from PIL import Image, ImageTk
+#from Tkinter import *
+import tkinter as tk
+from tkinter import filedialog
+from tkinter import messagebox
+from tkinter import ttk
 import base64
 import collections
 import glob
@@ -33,9 +38,7 @@ import matplotlib
 import numpy
 import os
 import struct
-import tkFileDialog
-import tkMessageBox
-import ttk
+import sys
 import zlib
 import tables
 # Dev Imports
@@ -132,9 +135,9 @@ for k,v in BLOCKS.items():
         if v['available_for_charge_carrier'] not in [0,1]:
             raise TypeError('Charge carrier is not 0 or 1.')
     except:
-        root = Tk()
+        root = tk.Tk()
         root.withdraw()
-        tkMessageBox.showinfo("Block Error","An error was observed in block "+str(k)+
+        messagebox.showinfo("Block Error","An error was observed in block "+str(k)+
             ". Please correct this block before running LaCyTools again.")
         sys.exit()
 UNITS = BLOCKS.keys()
@@ -185,7 +188,7 @@ class ToolTip(object):
         x, y, cx, cy = self.widget.bbox("insert")
         x = x + self.widget.winfo_rootx() + 27
         y = y + cy + self.widget.winfo_rooty() +27
-        self.tipwindow = tw = Toplevel(self.widget)
+        self.tipwindow = tw = tk.Toplevel(self.widget)
         tw.wm_overrideredirect(1)
         tw.wm_geometry("+%d+%d" % (x, y))
         try:
@@ -193,10 +196,10 @@ class ToolTip(object):
             tw.tk.call("::tk::unsupported::MacWindowStyle",
                        "style", tw._w,
                        "help", "noActivates")
-        except TclError:
+        except tk.TclError:
             pass
-        label = Label(tw, text=self.text, justify=LEFT,
-                      background="#ffffe0", relief=SOLID, borderwidth=1,
+        label = tk.Label(tw, text=self.text, justify=tk.LEFT,
+                      background="#ffffe0", relief=tk.SOLID, borderwidth=1,
                       wraplength=500, font=("tahoma", "8", "normal"))
         label.pack(ipadx=1)
 
@@ -223,29 +226,29 @@ class App():
         # VARIABLES
         self.master = master
         self.version = "1.1.0-alpha"
-        self.build = "181108a"
+        self.build = "190207a"
         self.inputFile = ""
         self.inputFileIdx = 0
         self.refFile = ""
         self.alFile = ""
-        self.calFile = IntVar()
+        self.calFile = tk.IntVar()
         self.ptFile = None
-        self.rmMZXML = IntVar()
+        self.rmMZXML = tk.IntVar()
         self.batchFolder = ""
         self.batchProcessing = 0
         self.batchWindow = 0
         self.dataWindow = 0
         self.outputWindow = 0
-        self.analyteIntensity = IntVar()
-        self.analyteRelIntensity = IntVar()
-        self.analyteBackground = IntVar()
-        self.analyteNoise = IntVar()
-        self.analytePerCharge = IntVar()
-        self.analyteBckSub = IntVar()
-        self.normalizeCluster = IntVar()
-        self.alignmentQC = IntVar()
-        self.qualityControl = IntVar()
-        self.spectraQualityControl = IntVar()
+        self.analyteIntensity = tk.IntVar()
+        self.analyteRelIntensity = tk.IntVar()
+        self.analyteBackground = tk.IntVar()
+        self.analyteNoise = tk.IntVar()
+        self.analytePerCharge = tk.IntVar()
+        self.analyteBckSub = tk.IntVar()
+        self.normalizeCluster = tk.IntVar()
+        self.alignmentQC = tk.IntVar()
+        self.qualityControl = tk.IntVar()
+        self.spectraQualityControl = tk.IntVar()
         self.log = True
         # Background can be determined in two ways
         # Options are 'MIN', 'MEDIAN' and 'NOBAN'
@@ -268,23 +271,23 @@ class App():
             background_image.imshow(image)
         # The Canvas
         self.canvas = FigureCanvasTkAgg(self.fig, master = master)
-        self.toolbar = NavigationToolbar2TkAgg(self.canvas, root)
-        self.canvas.get_tk_widget().pack(fill=BOTH,expand=YES)
+        self.toolbar = NavigationToolbar2Tk(self.canvas, root)
+        self.canvas.get_tk_widget().pack(fill=tk.BOTH,expand=tk.YES)
         self.canvas.draw()
 
         # FRAME
-        frame = Frame(master)
+        frame = tk.Frame(master)
         master.title("LaCyTools")
 
         # MENU
-        menu = Menu(root)
+        menu = tk.Menu(root)
         root.config(menu = menu)
 
-        filemenu = Menu(menu,tearoff=0)
+        filemenu = tk.Menu(menu,tearoff=0)
         menu.add_cascade(label="File", menu=filemenu)
         filemenu.add_command(label="Open Input File", command = self.openFile)
 
-        extractmenu = Menu(menu,tearoff=0)
+        extractmenu = tk.Menu(menu,tearoff=0)
         menu.add_cascade(label="Extraction", menu=extractmenu)
         extractmenu.add_command(label="Open ref file", command = self.openRefFile)
         extractmenu.add_command(label="Extract", command = self.extractData)
@@ -401,108 +404,108 @@ class App():
                 fw.write("EXTRACTION_PADDING\t"+str(int(self.extracPad.get()))+"\n")
         
         master.measurementWindow = 1
-        top = self.top = Toplevel()
-        self.chargeCarrierVar = StringVar()
+        top = self.top = tk.Toplevel()
+        self.chargeCarrierVar = tk.StringVar()
         self.chargeCarrierVar.set(CHARGE_CARRIER[0])
         options = []
         top.protocol( "WM_DELETE_WINDOW", lambda: close(self))
-        self.alignmentLabel = Label(top, text="Alignment parameters", font="bold")
-        self.alignmentLabel.grid(row=0, columnspan=2, sticky=W)
-        self.alignTimeWindowLabel = Label(top, text="Alignment time window")
-        self.alignTimeWindowLabel.grid(row=1, column=0, sticky=W)
-        self.alignTimeWindow = Entry(top)
+        self.alignmentLabel = tk.Label(top, text="Alignment parameters", font="bold")
+        self.alignmentLabel.grid(row=0, columnspan=2, sticky=tk.W)
+        self.alignTimeWindowLabel = tk.Label(top, text="Alignment time window")
+        self.alignTimeWindowLabel.grid(row=1, column=0, sticky=tk.W)
+        self.alignTimeWindow = tk.Entry(top)
         self.alignTimeWindow.insert(0, ALIGNMENT_TIME_WINDOW)
-        self.alignTimeWindow.grid(row=1, column=1, sticky=W)
-        self.alignMassWindowLabel = Label(top, text="Alignment m/z window")
-        self.alignMassWindowLabel.grid(row=2, column=0, sticky=W)
-        self.alignMassWindow = Entry(top)
+        self.alignTimeWindow.grid(row=1, column=1, sticky=tk.W)
+        self.alignMassWindowLabel = tk.Label(top, text="Alignment m/z window")
+        self.alignMassWindowLabel.grid(row=2, column=0, sticky=tk.W)
+        self.alignMassWindow = tk.Entry(top)
         self.alignMassWindow.insert(0, ALIGNMENT_MASS_WINDOW)
-        self.alignMassWindow.grid(row=2, column=1, sticky=W)
-        self.alignSnLabel = Label(top, text="Minimal S/N for alignment")
-        self.alignSnLabel.grid(row=3, column=0, sticky=W)
-        self.alignSn = Entry(top)
+        self.alignMassWindow.grid(row=2, column=1, sticky=tk.W)
+        self.alignSnLabel = tk.Label(top, text="Minimal S/N for alignment")
+        self.alignSnLabel.grid(row=3, column=0, sticky=tk.W)
+        self.alignSn = tk.Entry(top)
         self.alignSn.insert(0, ALIGNMENT_S_N_CUTOFF)
-        self.alignSn.grid(row=3, column=1, sticky=W)
-        self.alignMinLabel = Label(top, text="Minimal features for alignment")
-        self.alignMinLabel.grid(row=4, column=0, sticky=W)
-        self.alignMin = Entry(top)
+        self.alignSn.grid(row=3, column=1, sticky=tk.W)
+        self.alignMinLabel = tk.Label(top, text="Minimal features for alignment")
+        self.alignMinLabel.grid(row=4, column=0, sticky=tk.W)
+        self.alignMin = tk.Entry(top)
         self.alignMin.insert(0, ALIGNMENT_MIN_PEAK)
-        self.alignMin.grid(row=4, column=1, sticky=W)
-        self.calibrationLabel = Label(top, text="Calibration parameters", font="bold")
-        self.calibrationLabel.grid(row=5, columnspan=2, sticky=W)
-        self.calibMassWindowLabel = Label(top, text="Calibration mass window")
-        self.calibMassWindowLabel.grid(row=6, column=0, sticky=W)
-        self.calibMassWindow = Entry(top)
+        self.alignMin.grid(row=4, column=1, sticky=tk.W)
+        self.calibrationLabel = tk.Label(top, text="Calibration parameters", font="bold")
+        self.calibrationLabel.grid(row=5, columnspan=2, sticky=tk.W)
+        self.calibMassWindowLabel = tk.Label(top, text="Calibration mass window")
+        self.calibMassWindowLabel.grid(row=6, column=0, sticky=tk.W)
+        self.calibMassWindow = tk.Entry(top)
         self.calibMassWindow.insert(0, CALIB_MASS_WINDOW)
-        self.calibMassWindow.grid(row=6, column=1, sticky=W)
-        self.calibSnLabel = Label(top, text="Minimal S/N for calibration")
-        self.calibSnLabel.grid(row=7, column=0, sticky=W)
-        self.calibSn = Entry(top)
+        self.calibMassWindow.grid(row=6, column=1, sticky=tk.W)
+        self.calibSnLabel = tk.Label(top, text="Minimal S/N for calibration")
+        self.calibSnLabel.grid(row=7, column=0, sticky=tk.W)
+        self.calibSn = tk.Entry(top)
         self.calibSn.insert(0, CALIB_S_N_CUTOFF)
-        self.calibSn.grid(row=7, column=1, sticky=W)
-        self.calibMinLabel = Label(top, text="Minimal number of calibrants")
-        self.calibMinLabel.grid(row=8, column=0, sticky=W)
-        self.calibMin = Entry(top)
+        self.calibSn.grid(row=7, column=1, sticky=tk.W)
+        self.calibMinLabel = tk.Label(top, text="Minimal number of calibrants")
+        self.calibMinLabel.grid(row=8, column=0, sticky=tk.W)
+        self.calibMin = tk.Entry(top)
         self.calibMin.insert(0, CALIB_MIN_PEAK)
-        self.calibMin.grid(row=8, column=1, sticky=W)
-        self.extractionLabel = Label(top, text="Extraction parameters", font="bold")
-        self.extractionLabel.grid(row=9, columnspan=2, sticky=W)
-        self.sumSpecLabel = Label(top, text="Data points per 1 m/z")
-        self.sumSpecLabel.grid(row=10, column=0, sticky=W)
-        self.sumSpec = Entry(top)
+        self.calibMin.grid(row=8, column=1, sticky=tk.W)
+        self.extractionLabel = tk.Label(top, text="Extraction parameters", font="bold")
+        self.extractionLabel.grid(row=9, columnspan=2, sticky=tk.W)
+        self.sumSpecLabel = tk.Label(top, text="Data points per 1 m/z")
+        self.sumSpecLabel.grid(row=10, column=0, sticky=tk.W)
+        self.sumSpec = tk.Entry(top)
         self.sumSpec.insert(0, SUM_SPECTRUM_RESOLUTION)
-        self.sumSpec.grid(row=10, column=1, sticky=W)
-        self.extracMassWindowLabel = Label(top, text="Extraction m/z window")
-        self.extracMassWindowLabel.grid(row=12, column=0, sticky=W)
-        self.extracMassWindow = Entry(top)
+        self.sumSpec.grid(row=10, column=1, sticky=tk.W)
+        self.extracMassWindowLabel = tk.Label(top, text="Extraction m/z window")
+        self.extracMassWindowLabel.grid(row=12, column=0, sticky=tk.W)
+        self.extracMassWindow = tk.Entry(top)
         self.extracMassWindow.insert(0, MASS_WINDOW)
-        self.extracMassWindow.grid(row=12, column=1, sticky=W)
-        self.extracTimeWindowLabel = Label(top, text="Extraction time window")
-        self.extracTimeWindowLabel.grid(row=13, column=0, sticky=W)
-        self.extracTimeWindow = Entry(top)
+        self.extracMassWindow.grid(row=12, column=1, sticky=tk.W)
+        self.extracTimeWindowLabel = tk.Label(top, text="Extraction time window")
+        self.extracTimeWindowLabel.grid(row=13, column=0, sticky=tk.W)
+        self.extracTimeWindow = tk.Entry(top)
         self.extracTimeWindow.insert(0, TIME_WINDOW)
-        self.extracTimeWindow.grid(row=13, column=1, sticky=W)
-        self.extracPadLabel = Label(top, text="Extraction window padding")
-        self.extracPadLabel.grid(row=14, column=0, sticky=W)
-        self.extracPad = Entry(top)
+        self.extracTimeWindow.grid(row=13, column=1, sticky=tk.W)
+        self.extracPadLabel = tk.Label(top, text="Extraction window padding")
+        self.extracPadLabel.grid(row=14, column=0, sticky=tk.W)
+        self.extracPad = tk.Entry(top)
         self.extracPad.insert(0, EXTRACTION_PADDING)
-        self.extracPad.grid(row=14, column=1, sticky=W)
-        self.extracMinChargeLabel = Label(top, text="Minimum charge state")
-        self.extracMinChargeLabel.grid(row=15, column=0, sticky=W)
-        self.extracMinCharge = Entry(top)
+        self.extracPad.grid(row=14, column=1, sticky=tk.W)
+        self.extracMinChargeLabel = tk.Label(top, text="Minimum charge state")
+        self.extracMinChargeLabel.grid(row=15, column=0, sticky=tk.W)
+        self.extracMinCharge = tk.Entry(top)
         self.extracMinCharge.insert(0, MIN_CHARGE)
-        self.extracMinCharge.grid(row=15, column=1, sticky=W)
-        self.extracMaxChargeLabel = Label(top, text="Maximum charge state")
-        self.extracMaxChargeLabel.grid(row=16, column=0, sticky=W)
-        self.extracMaxCharge = Entry(top)
+        self.extracMinCharge.grid(row=15, column=1, sticky=tk.W)
+        self.extracMaxChargeLabel = tk.Label(top, text="Maximum charge state")
+        self.extracMaxChargeLabel.grid(row=16, column=0, sticky=tk.W)
+        self.extracMaxCharge = tk.Entry(top)
         self.extracMaxCharge.insert(0, MAX_CHARGE)
-        self.extracMaxCharge.grid(row=16, column=1, sticky=W)
+        self.extracMaxCharge.grid(row=16, column=1, sticky=tk.W)
         for i in UNITS:
             if BLOCKS[i]['available_for_charge_carrier'] == 1:
                 options.append(i)
-        self.chargeCarrierLabel = Label(top, text="Charge carrier")
-        self.chargeCarrierLabel.grid(row=17, column=0, sticky=W)
-        self.chargeCarrier = OptionMenu(top, self.chargeCarrierVar, *options)
-        self.chargeCarrier.grid(row=17, column=1, sticky=W)
-        self.extracMinTotalLabel = Label(top, text="Minimum isotopic fraction")
-        self.extracMinTotalLabel.grid(row=18, column=0, sticky=W)
-        self.extracMinTotal = Entry(top)
+        self.chargeCarrierLabel = tk.Label(top, text="Charge carrier")
+        self.chargeCarrierLabel.grid(row=17, column=0, sticky=tk.W)
+        self.chargeCarrier = tk.OptionMenu(top, self.chargeCarrierVar, *options)
+        self.chargeCarrier.grid(row=17, column=1, sticky=tk.W)
+        self.extracMinTotalLabel = tk.Label(top, text="Minimum isotopic fraction")
+        self.extracMinTotalLabel.grid(row=18, column=0, sticky=tk.W)
+        self.extracMinTotal = tk.Entry(top)
         self.extracMinTotal.insert(0, MIN_TOTAL)
-        self.extracMinTotal.grid(row=18, column=1, sticky=W)
-        self.extracBackLabel = Label(top, text="Background detection window")
-        self.extracBackLabel.grid(row=19, column=0, sticky=W)
-        self.extracBack = Entry(top)
+        self.extracMinTotal.grid(row=18, column=1, sticky=tk.W)
+        self.extracBackLabel = tk.Label(top, text="Background detection window")
+        self.extracBackLabel.grid(row=19, column=0, sticky=tk.W)
+        self.extracBack = tk.Entry(top)
         self.extracBack.insert(0, BACKGROUND_WINDOW)
-        self.extracBack.grid(row=19, column=1, sticky=W)
-        self.extracSnCutoffLabel = Label(top, text="Spectra QC S/N cutoff")
-        self.extracSnCutoffLabel.grid(row=20, column=0, sticky=W)
-        self.extracSnCutoff = Entry(top)
+        self.extracBack.grid(row=19, column=1, sticky=tk.W)
+        self.extracSnCutoffLabel = tk.Label(top, text="Spectra QC S/N cutoff")
+        self.extracSnCutoffLabel.grid(row=20, column=0, sticky=tk.W)
+        self.extracSnCutoff = tk.Entry(top)
         self.extracSnCutoff.insert(0, S_N_CUTOFF)
-        self.extracSnCutoff.grid(row=20,column=1, sticky=W)
-        self.ok = Button(top,text = 'Ok', command = lambda: close(self))
-        self.ok.grid(row = 21, column = 0, sticky = W)
-        self.save = Button(top, text = 'Save', command = lambda: save(self))
-        self.save.grid(row = 21, column = 1, sticky = E)
+        self.extracSnCutoff.grid(row=20,column=1, sticky=tk.W)
+        self.ok = tk.Button(top,text = 'Ok', command = lambda: close(self))
+        self.ok.grid(row = 21, column = 0, sticky = tk.W)
+        self.save = tk.Button(top, text = 'Save', command = lambda: save(self))
+        self.save.grid(row = 21, column = 1, sticky = tk.E)
         # Tooltips
         createToolTip(self.alignTimeWindowLabel,"The time window in seconds around the specified time of an alignment feature that LaCyTools is allowed to look for the maximum intensity of each feature.")
         createToolTip(self.alignMassWindowLabel,"The m/z window in Thompson around the specified exact m/z of an alignment feature, that LaCyTools will use to find the maximum of each feature.")
@@ -589,14 +592,14 @@ class App():
                 try:
                     if line[0][0].isdigit():
                         line = line.rstrip().split()
-                        features.append(map(float,line))
+                        features.append([float(x) for x in line])
                 except IndexError:
-                    print "Incorrect line observed in: "+str(file)
+                    print ("Incorrect line observed in: ")+str(file)
                     if self.log == True:
                         with open('LaCyTools.log', 'a') as flog:
                             flog.write(str(datetime.now())+ "\tIncorrect line observed in: "+str(analyteFile)+"\n")
                 except:
-                    print "Unexpected Error: ", sys.exc_info()[0]
+                    print ("Unexpected Error: "), sys.exc_info()[0]
         return features
 
     def fitFunc(self, x,a,b,c):
@@ -692,23 +695,23 @@ class App():
         if master.dataWindow == 1:
             return
         master.dataWindow = 1
-        self.folder = StringVar()
-        self.ptFileName = StringVar()
+        self.folder = tk.StringVar()
+        self.ptFileName = tk.StringVar()
         def close(self):
             master.dataWindow = 0
             top.destroy()
         def batchButton():
             master.openBatchFolder()
             self.folder.set(master.batchFolder)
-        top = self.top = Toplevel()
+        top = self.top = tk.Toplevel()
         top.protocol( "WM_DELETE_WINDOW", lambda: close(self))
-        self.batchDir = Button(top, text = "Batch Directory", width = 25, command = lambda: batchButton())
-        self.batchDir.grid(row = 0, column = 0, sticky = W)
-        self.batch = Label(top, textvariable = self.folder, width = 25)
+        self.batchDir = tk.Button(top, text = "Batch Directory", width = 25, command = lambda: batchButton())
+        self.batchDir.grid(row = 0, column = 0, sticky = tk.W)
+        self.batch = tk.Label(top, textvariable = self.folder, width = 25)
         self.batch.grid(row = 0, column = 1)
-        self.remove = Checkbutton(top, text = "Remove mzXML files", variable = master.rmMZXML, onvalue = 1, offvalue = 0)
-        self.remove.grid(row = 1, column = 0, sticky = W)
-        self.convertButton = Button(top, text = "Batch Convert to pyTables", width = 25, command = lambda: master.batchConvert(master))
+        self.remove = tk.Checkbutton(top, text = "Remove mzXML files", variable = master.rmMZXML, onvalue = 1, offvalue = 0)
+        self.remove.grid(row = 1, column = 0, sticky = tk.W)
+        self.convertButton = tk.Button(top, text = "Batch Convert to pyTables", width = 25, command = lambda: master.batchConvert(master))
         self.convertButton.grid(row = 2, column = 0,columnspan = 2)
 
     def batchConvert(self,master):
@@ -723,7 +726,7 @@ class App():
 
         filenames = glob.glob(str(self.batchFolder)+"/*" + EXTENSION)
 
-        print "Converting..."
+        print ("Converting...")
 
         filename = filenames[0]
         array = []
@@ -740,7 +743,7 @@ class App():
         try:
             rawfile = tables.open_file(os.path.join(self.batchFolder, "pytables.h5"), "w", filters=tables.Filters(complevel=4, complib="blosc:lz4"))
         except tables.HDF5ExtError:
-            print "Error creating pyTables file"
+            print ("Error creating pyTables file")
             raise
 
         class Scan(tables.IsDescription):
@@ -806,8 +809,8 @@ class App():
             with open('LaCyTools.log', 'a') as flog:
                 flog.write(str(datetime.now())+ "\tFinished converting\n")
         end_time = time.time()
-        print "Batch conversion lasted for", (end_time - start_time) / 60., "minutes, or", (end_time - start_time) / len(filenames), "seconds per sample."
-        tkMessageBox.showinfo("Status Message","Batch Convert finished on "+str(datetime.now()))
+        print ("Batch conversion lasted for ", str((end_time - start_time) / 60.), "minutes, or", str((end_time - start_time) / len(filenames)), "seconds per sample.")
+        messagebox.showinfo("Status Message","Batch Convert finished on "+str(datetime.now()))
 
     def batchProcess(self,master):
         """ This is the main controller function for batch processing.
@@ -827,41 +830,41 @@ class App():
         start = time.time()
         # Safety feature (prevents batchProcess from being started multiple times)
         if self.batchProcessing == 1:
-            tkMessageBox.showinfo("Error Message", "Batch Process already running")
+            messagebox.showinfo("Error Message", "Batch Process already running")
             return
         self.batchProcessing = 1
         #####################
         # PROGRESS BAR CODE #
         #####################
-        self.alPerc = StringVar()
-        self.extPerc = StringVar()
+        self.alPerc = tk.StringVar()
+        self.extPerc = tk.StringVar()
         self.alPerc.set("0%")
         self.extPerc.set("0%")
         # barWindow = Tk()
-        barWindow = self.top = Toplevel()
+        barWindow = self.top = tk.Toplevel()
         barWindow.title("Progress Bar")
-        al = Label(barWindow, text="Alignment", padx=25)
-        al.grid(row=0, column=0, sticky="W")
+        al = tk.Label(barWindow, text="Alignment", padx=25)
+        al.grid(row=0, column=0, sticky=tk.W)
         ft = ttk.Frame(barWindow)
-        ft.grid(row=1, columnspan=2, sticky="")
-        perc1 = Label(barWindow, textvariable=self.alPerc)
+        ft.grid(row=1, columnspan=2)
+        perc1 = tk.Label(barWindow, textvariable=self.alPerc)
         perc1.grid(row=0, column=1, padx=25)
         progressbar = ttk.Progressbar(ft, length=100, mode='determinate')
-        progressbar.grid(row=1, columnspan=2, sticky="")
-        ext = Label(barWindow, text="Quantitation", padx=25)
-        ext.grid(row=2, column=0, sticky="W")
+        progressbar.grid(row=1, columnspan=2)
+        ext = tk.Label(barWindow, text="Quantitation", padx=25)
+        ext.grid(row=2, column=0, sticky=tk.W)
         ft2 = ttk.Frame(barWindow)
-        ft2.grid(row=3, columnspan=2, sticky="")
-        perc2 = Label(barWindow, textvariable=self.extPerc)
+        ft2.grid(row=3, columnspan=2)
+        perc2 = tk.Label(barWindow, textvariable=self.extPerc)
         perc2.grid(row=2, column=1, padx=25)
         progressbar2 = ttk.Progressbar(ft2, length=100, mode='determinate')
-        progressbar2.grid(row=3, columnspan=2, sticky="")
+        progressbar2.grid(row=3, columnspan=2)
         ###################
         # END OF BAR CODE #
         ###################
         # Check if reference or alignment file was selected
         if self.refFile == "" and self.alFile == "" and self.calFile == "":
-            tkMessageBox.showinfo("File Error","No reference or alignment file selected")
+            messagebox.showinfo("File Error","No reference or alignment file selected")
         # Check for pytables file
         if os.path.isfile(os.path.join(self.batchFolder,"pytables.h5")):
             ptFileName = os.path.join(self.batchFolder,"pytables.h5")
@@ -871,7 +874,7 @@ class App():
             self.readData = self.readPTData
             self.transform_mzXML = self.alignRTs
             filenames2idx = dict([(filename, idx) for idx, filename in enumerate(filenames)])
-            print 'Found "pytables.h5" in batch folder.'
+            print ('Found "pytables.h5" in batch folder.')
         else:
             filenames = glob.glob(os.path.join(str(self.batchFolder),"*"+EXTENSION))
             filenames2idx = dict([(filename, idx) for idx, filename in enumerate(filenames)])
@@ -1022,7 +1025,7 @@ class App():
         # (CALIBRATION AND) EXTRACTION
         if self.refFile != "":
             if self.analyteIntensity.get() == 0 and self.analyteRelIntensity.get() == 0 and self.analyteBackground.get() == 0 and self.analyteNoise.get() == 0 and self.alignmentQC.get() == 0 and self.qualityControl.get() == 0 and self.spectraQualityControl.get() == 0:
-                tkMessageBox.showinfo("Output Error","No outputs selected")
+                messagebox.showinfo("Output Error","No outputs selected")
             self.initCompositionMasses(self.refFile)
             ref = []
             self.refParser(ref)
@@ -1135,7 +1138,7 @@ class App():
         if self.log == True:
             with open('LaCyTools.log', 'a') as flog:
                 flog.write(str(datetime.now())+ "\tBatch process lasted for "+str((end - start) / 60.)+"minutes\n")
-        tkMessageBox.showinfo("Status Message","Batch Process finished on "+str(datetime.now()))
+        messagebox.showinfo("Status Message","Batch Process finished on "+str(datetime.now()))
 
     def writeCalibration(self,function,array):
         """ This function creates a calibrated mzXML file. However, the
@@ -1266,7 +1269,7 @@ class App():
                     if j[1] > maximum[1]:
                         maximum = (j[0],j[1])
             except:
-                print "Analyte: "+str(i[0])+" is being troublesome, kill it"
+                print ("Analyte: "+str(i[0])+" is being troublesome, kill it")
             # Plot Code (for testing purposes)
             """fig =  plt.figure()
             ax = fig.add_subplot(111)
@@ -1519,7 +1522,10 @@ class App():
                 else:
                     if str(analyte) == str(i[0]) and float(time) == float(i[1]) and float(timewindow) == float(i[2]) and relative_intensity == current_relative_intensity and int(chargestate) == int(charge):
                         masses.append(float(j[1]))
-            masses  = "["+", ".join(map(str, masses))+"]" 
+            if masses:
+                masses  = "["+", ".join(map(str, masses))+"]" 
+            else:
+                masses = ""
             try:
                 header += "\t"+masses
             except TypeError:
@@ -1545,7 +1551,7 @@ class App():
                 name = str(file)
                 name = os.path.split(str(name))[-1]
                 current = None
-                for _ in xrange(2):
+                for _ in range(2):
                     next(fr)
                 for line in fr:
                     if not line:
@@ -1706,7 +1712,7 @@ class App():
                 # Per charge state #
                 ####################
                 if self.analytePerCharge.get() == 1:
-                    minCharge = sys.maxint
+                    minCharge = sys.maxsize
                     maxCharge = 0
                     for i in total:
                         for j in compositions:
@@ -1720,7 +1726,7 @@ class App():
                                                 maxCharge = int(l.charge)
                                 except AttributeError:
                                     pass
-                    for i in xrange(minCharge,maxCharge+1):
+                    for i in range(minCharge,maxCharge+1):
                         # This is a time intensive function
                         # Header
                         header = "Absolute Intensity ("+str(i)+"+)"+self.createHeader(compositions, ref, i)
@@ -1779,7 +1785,7 @@ class App():
                 # Per charge state #
                 ####################
                 if self.analytePerCharge.get() == 1:
-                    minCharge = sys.maxint
+                    minCharge = sys.maxsize
                     maxCharge = 0
                     for i in total:
                         for j in compositions:
@@ -1793,7 +1799,7 @@ class App():
                                                 maxCharge = int(l.charge)
                                 except AttributeError:
                                     pass
-                    for i in xrange(minCharge,maxCharge+1):
+                    for i in range(minCharge,maxCharge+1):
                         # This is a time intensive function
                         # Header
                         header = "Absolute Intensity (Background Subtracted, "+str(i)+"+)"+self.createHeader(compositions, ref, i)
@@ -1838,28 +1844,22 @@ class App():
                                 try:
                                     if k.composition == j[0] and float(k.time) == float(j[1]) and float(k.timeWindow) == float(j[2]):
                                         for l in k.isotopes:
-                                            print max(0, l.obsInt)
                                             totalIntensity += max(0, l.obsInt)
                                 except AttributeError:
                                     pass
-                        print "Total Int: "+str(totalIntensity)
                         for j in compositions:
                             sumInt = 0
                             for k in i[1]:
                                 try:
                                     if k.composition == j[0] and float(k.time) == float(j[1]) and float(k.timeWindow) == float(j[2]):
                                         for l in k.isotopes:
-                                            print max(0, l.obsInt)
                                             sumInt += max(0, l.obsInt)
                                 except AttributeError:
                                     pass
-                            print "Sum Int: "+str(sumInt)
                             if sumInt > 0:
                                 fw.write("\t"+str(float(sumInt)/float(totalIntensity)))
                             else:
                                 fw.write("\t")
-                            print "Rel: "+str(float(sumInt)/float(totalIntensity))
-                            raw_input("Arff")
                         fw.write("\n")
                     fw.write("\n")
 
@@ -1867,7 +1867,7 @@ class App():
                 # Per charge state #
                 ####################
                 if self.analytePerCharge.get() == 1:
-                    minCharge = sys.maxint
+                    minCharge = sys.maxsize
                     maxCharge = 0
                     for i in total:
                         for j in compositions:
@@ -1881,7 +1881,7 @@ class App():
                                                 maxCharge = int(l.charge)
                                 except AttributeError:
                                     pass
-                    for i in xrange(minCharge,maxCharge+1):
+                    for i in range(minCharge,maxCharge+1):
                         # This is a time intensive function
                         # Header
                         header = "Relative Intensity ("+str(i)+"+)"+self.createHeader(compositions, ref)
@@ -1981,7 +1981,7 @@ class App():
                 # Per charge state #
                 ####################
                 if self.analytePerCharge.get() == 1:
-                    minCharge = sys.maxint
+                    minCharge = sys.maxsize
                     maxCharge = 0
                     for i in total:
                         for j in compositions:
@@ -1995,7 +1995,7 @@ class App():
                                                 maxCharge = int(l.charge)
                                 except AttributeError:
                                     pass
-                    for i in xrange(minCharge,maxCharge+1):
+                    for i in range(minCharge,maxCharge+1):
                         # This is a time intensive function
                         # Header
                         header = "Relative Intensity (Cluster Normalization, "+str(i)+"+)"+self.createHeader(compositions, ref, i)
@@ -2093,7 +2093,7 @@ class App():
                 # Per charge state #
                 ####################
                 if self.analytePerCharge.get() == 1:
-                    minCharge = sys.maxint
+                    minCharge = sys.maxsize
                     maxCharge = 0
                     for i in total:
                         for j in compositions:
@@ -2107,7 +2107,7 @@ class App():
                                                 maxCharge = int(l.charge)
                                 except AttributeError:
                                     pass
-                    for i in xrange(minCharge,maxCharge+1):
+                    for i in range(minCharge,maxCharge+1):
                         # This is a time intensive function
                         # Header
                         header = "Relative Intensity (Background Subtracted, "+str(i)+"+)"+self.createHeader(compositions, ref, i)
@@ -2205,7 +2205,7 @@ class App():
                 # Per charge state #
                 ####################
                 if self.analytePerCharge.get() == 1:
-                    minCharge = sys.maxint
+                    minCharge = sys.maxsize
                     maxCharge = 0
                     for i in total:
                         for j in compositions:
@@ -2219,7 +2219,7 @@ class App():
                                                 maxCharge = int(l.charge)
                                 except AttributeError:
                                     pass
-                    for i in xrange(minCharge,maxCharge+1):
+                    for i in range(minCharge,maxCharge+1):
                         # This is a time intensive function
                         # Header
                         header = "Relative Intensity (Background Subtracted, Cluster Normalization, "+str(i)+"+)"+self.createHeader(compositions, ref, i)
@@ -2305,7 +2305,7 @@ class App():
                 # Per charge state #
                 ####################
                 if self.analytePerCharge.get() == 1:
-                    minCharge = sys.maxint
+                    minCharge = sys.maxsize
                     maxCharge = 0
                     for i in total:
                         for j in compositions:
@@ -2319,7 +2319,7 @@ class App():
                                                 maxCharge = int(l.charge)
                                 except AttributeError:
                                     pass
-                    for i in xrange(minCharge,maxCharge+1):
+                    for i in range(minCharge,maxCharge+1):
                         # This is a time intensive function
                         # Header
                         header = "Background ("+str(i)+"+)"+str(i)+"+)"+self.createHeader(compositions, ref, i)
@@ -2372,7 +2372,7 @@ class App():
                 # Per charge state #
                 ####################
                 if self.analytePerCharge.get() == 1:
-                    minCharge = sys.maxint
+                    minCharge = sys.maxsize
                     maxCharge = 0
                     for i in total:
                         for j in compositions:
@@ -2386,7 +2386,7 @@ class App():
                                                 maxCharge = int(l.charge)
                                 except AttributeError:
                                     pass
-                    for i in xrange(minCharge,maxCharge+1):
+                    for i in range(minCharge,maxCharge+1):
                         # This is a time intensive function
                         # Header
                         header = "Noise ("+str(i)+"+)"+self.createHeader(compositions, ref, i)
@@ -2485,7 +2485,7 @@ class App():
             # Analyte Mass Accuracy (in PPM) #
             ##################################
             if self.qualityControl.get() == 1:
-                minCharge = sys.maxint
+                minCharge = sys.maxsize
                 maxCharge = 0
                 for i in total:
                     for j in compositions:
@@ -2499,7 +2499,7 @@ class App():
                                             maxCharge = int(l.charge)
                             except AttributeError:
                                 pass
-                for i in xrange(minCharge,maxCharge+1):
+                for i in range(minCharge,maxCharge+1):
                     # This is a time intensive function
                     # Header
                     header = "Mass Accuracy [ppm] ("+str(i)+"+)"+self.createHeader(compositions, ref, i)
@@ -2533,7 +2533,7 @@ class App():
             # Isotopic Pattern Quality #
             ############################
             if self.qualityControl.get() == 1:
-                minCharge = sys.maxint
+                minCharge = sys.maxsize
                 maxCharge = 0
                 for i in total:
                     for j in compositions:
@@ -2547,7 +2547,7 @@ class App():
                                             maxCharge = int(l.charge)
                             except AttributeError:
                                 pass
-                for i in xrange(minCharge,maxCharge+1):
+                for i in range(minCharge,maxCharge+1):
                     # This is a time intensive function
                     # Header
                     header = "Isotopic Pattern Quality ("+str(i)+"+)"+self.createHeader(compositions, ref, i)
@@ -2586,7 +2586,7 @@ class App():
             # Signal to Noise ratio #
             #########################
             if self.qualityControl.get() == 1:
-                minCharge = sys.maxint
+                minCharge = sys.maxsize
                 maxCharge = 0
                 for i in total:
                     for j in compositions:
@@ -2600,7 +2600,7 @@ class App():
                                             maxCharge = int(l.charge)
                             except AttributeError:
                                 pass
-                for i in xrange(minCharge,maxCharge+1):
+                for i in range(minCharge,maxCharge+1):
                     # This is a time intensive function
                     # Header
                     header = "S/N ("+str(i)+"+)"+self.createHeader(compositions, ref, i)
@@ -2715,9 +2715,9 @@ class App():
         if master.batchWindow == 1:
             return
         master.batchWindow = 1
-        self.al = StringVar()
-        self.ref = StringVar()
-        self.folder = StringVar()
+        self.al = tk.StringVar()
+        self.ref = tk.StringVar()
+        self.folder = tk.StringVar()
 
         if master.alFile:
             self.al.set(master.alFile)
@@ -2749,25 +2749,25 @@ class App():
             top.destroy()
             master.batchProcess(master)
 
-        top = self.top = Toplevel()
+        top = self.top = tk.Toplevel()
         top.protocol( "WM_DELETE_WINDOW", lambda: close(self))
-        self.aligns = Button(top, text = "Alignment File", widt = 25, command = lambda: alButton())
-        self.aligns.grid(row = 2, column = 0, sticky = W)
-        self.alLabel = Label(top, textvariable = self.al, width = 25)
+        self.aligns = tk.Button(top, text = "Alignment File", widt = 25, command = lambda: alButton())
+        self.aligns.grid(row = 2, column = 0, sticky = tk.W)
+        self.alLabel = tk.Label(top, textvariable = self.al, width = 25)
         self.alLabel.grid(row = 2, column = 1)
-        self.calibrate = Checkbutton(top, text = "Calibration", variable = master.calFile, onvalue = 1, offvalue = 0)
-        self.calibrate.grid(row = 3, column = 0, sticky = W)
-        self.compos = Button(top, text = "Reference File", width = 25, command = lambda: refButton())
-        self.compos.grid(row = 4, column = 0, sticky = W)
-        self.com = Label(top, textvariable = self.ref, width = 25)
+        self.calibrate = tk.Checkbutton(top, text = "Calibration", variable = master.calFile, onvalue = 1, offvalue = 0)
+        self.calibrate.grid(row = 3, column = 0, sticky = tk.W)
+        self.compos = tk.Button(top, text = "Reference File", width = 25, command = lambda: refButton())
+        self.compos.grid(row = 4, column = 0, sticky = tk.W)
+        self.com = tk.Label(top, textvariable = self.ref, width = 25)
         self.com.grid(row = 4, column = 1)
-        self.batchDir = Button(top, text = "Batch Directory", width = 25, command = lambda: batchButton())
-        self.batchDir.grid(row = 5, column = 0, sticky = W)
-        self.batch = Label(top, textvariable = self.folder, width = 25)
+        self.batchDir = tk.Button(top, text = "Batch Directory", width = 25, command = lambda: batchButton())
+        self.batchDir.grid(row = 5, column = 0, sticky = tk.W)
+        self.batch = tk.Label(top, textvariable = self.folder, width = 25)
         self.batch.grid(row = 5, column = 1)
-        self.output = Button(top, text = "Output Format", width = 25, command = lambda: master.outputPopup(master))
+        self.output = tk.Button(top, text = "Output Format", width = 25, command = lambda: master.outputPopup(master))
         self.output.grid(row = 6, column = 0,columnspan = 2)
-        self.run = Button(top, text = "Run Batch Process", width = 25, command = lambda: run())
+        self.run = tk.Button(top, text = "Run Batch Process", width = 25, command = lambda: run())
         self.run.grid(row = 7, column = 0, columnspan = 2)
         #top.lift()
         # Couple the attributes to button presses
@@ -2809,38 +2809,38 @@ class App():
         def close(self):
             master.outputWindow = 0
             top.destroy()
-        top = self.top = Toplevel()
+        top = self.top = tk.Toplevel()
         top.protocol( "WM_DELETE_WINDOW", lambda: close(self))
-        self.all = Button(top, text = "Select All", command = lambda: select_all(self))
-        self.all.grid(row = 0, column = 0, sticky = W)
-        self.none = Button(top, text = "Select None", command = lambda: select_none(self))
-        self.none.grid(row = 0, column = 1, sticky = E)
-        self.text1 = Label(top, text = "Base Outputs", font="bold")
-        self.text1.grid(row = 1, column = 0, sticky = W)
-        self.text2 = Label(top, text = "Output Modifiers", font="bold")
-        self.text2.grid(row = 1, column = 1, sticky = W)
+        self.all = tk.Button(top, text = "Select All", command = lambda: select_all(self))
+        self.all.grid(row = 0, column = 0, sticky = tk.W)
+        self.none = tk.Button(top, text = "Select None", command = lambda: select_none(self))
+        self.none.grid(row = 0, column = 1, sticky = tk.E)
+        self.text1 = tk.Label(top, text = "Base Outputs", font="bold")
+        self.text1.grid(row = 1, column = 0, sticky = tk.W)
+        self.text2 = tk.Label(top, text = "Output Modifiers", font="bold")
+        self.text2.grid(row = 1, column = 1, sticky = tk.W)
         # Analyte Intensity (*,#)
-        self.ai = Checkbutton(top, text = u"Analyte Intensity\u00B9\u00B7\u00B2", variable = master.analyteIntensity, onvalue = 1, offvalue = 0)
-        self.ai.grid(row = 2, column = 0, sticky = W)
-        self.ri = Checkbutton(top, text = u"Relative Intensity\u00B9\u00B7\u00B2\u00B7\u00B3", variable = master.analyteRelIntensity, onvalue = 1, offvalue = 0)
-        self.ri.grid(row = 3, column = 0, sticky = W)
-        self.back = Checkbutton(top, text = u"Analyte Background\u00B9", variable = master.analyteBackground, onvalue = 1, offvalue = 0)
-        self.back.grid(row = 4, column = 0, sticky = W)
-        self.analNoise = Checkbutton(top, text = u"Analyte Noise\u00B9", variable = master.analyteNoise, onvalue = 1, offvalue = 0)
-        self.analNoise.grid(row = 5, column = 0, sticky = W)
-        self.chargeState = Checkbutton(top, text = u"\u00B9Intensities per Charge State", variable = master.analytePerCharge, onvalue = 1, offvalue = 0)
-        self.chargeState.grid(row = 2, column = 1, sticky = W)
-        self.bckSub = Checkbutton(top, text = u"\u00B2Background subtracted Intensities", variable = master.analyteBckSub, onvalue = 1, offvalue = 0)
-        self.bckSub.grid(row = 3, column = 1, sticky = W)
-        self.norClus = Checkbutton(top, text = u"\u00B3Normalization per cluster", variable = master.normalizeCluster, onvalue = 1, offvalue = 0)
-        self.norClus.grid(row = 4, column = 1, sticky = W)
-        self.align = Checkbutton(top, text="Alignment QC", variable=master.alignmentQC, onvalue=1, offvalue=0)
-        self.align.grid(row = 6, column=0, sticky=W)
-        self.qc = Checkbutton(top, text = "Analyte QC", variable = master.qualityControl, onvalue = 1, offvalue = 0)
-        self.qc.grid(row = 7, column = 0, sticky = W)
-        self.specQC = Checkbutton(top, text="Spectral QC", variable = master.spectraQualityControl, onvalue=1, offvalue=0)
-        self.specQC.grid(row = 8, column = 0, sticky = W)
-        self.button = Button(top,text='Ok',command = lambda: close(self))
+        self.ai = tk.Checkbutton(top, text = u"Analyte Intensity\u00B9\u00B7\u00B2", variable = master.analyteIntensity, onvalue = 1, offvalue = 0)
+        self.ai.grid(row = 2, column = 0, sticky = tk.W)
+        self.ri = tk.Checkbutton(top, text = u"Relative Intensity\u00B9\u00B7\u00B2\u00B7\u00B3", variable = master.analyteRelIntensity, onvalue = 1, offvalue = 0)
+        self.ri.grid(row = 3, column = 0, sticky = tk.W)
+        self.back = tk.Checkbutton(top, text = u"Analyte Background\u00B9", variable = master.analyteBackground, onvalue = 1, offvalue = 0)
+        self.back.grid(row = 4, column = 0, sticky = tk.W)
+        self.analNoise = tk.Checkbutton(top, text = u"Analyte Noise\u00B9", variable = master.analyteNoise, onvalue = 1, offvalue = 0)
+        self.analNoise.grid(row = 5, column = 0, sticky = tk.W)
+        self.chargeState = tk.Checkbutton(top, text = u"\u00B9Intensities per Charge State", variable = master.analytePerCharge, onvalue = 1, offvalue = 0)
+        self.chargeState.grid(row = 2, column = 1, sticky = tk.W)
+        self.bckSub = tk.Checkbutton(top, text = u"\u00B2Background subtracted Intensities", variable = master.analyteBckSub, onvalue = 1, offvalue = 0)
+        self.bckSub.grid(row = 3, column = 1, sticky = tk.W)
+        self.norClus = tk.Checkbutton(top, text = u"\u00B3Normalization per cluster", variable = master.normalizeCluster, onvalue = 1, offvalue = 0)
+        self.norClus.grid(row = 4, column = 1, sticky = tk.W)
+        self.align = tk.Checkbutton(top, text="Alignment QC", variable=master.alignmentQC, onvalue=1, offvalue=0)
+        self.align.grid(row = 6, column=0, sticky=tk.W)
+        self.qc = tk.Checkbutton(top, text = "Analyte QC", variable = master.qualityControl, onvalue = 1, offvalue = 0)
+        self.qc.grid(row = 7, column = 0, sticky = tk.W)
+        self.specQC = tk.Checkbutton(top, text="Spectral QC", variable = master.spectraQualityControl, onvalue=1, offvalue=0)
+        self.specQC.grid(row = 8, column = 0, sticky = tk.W)
+        self.button = tk.Button(top,text='Ok',command = lambda: close(self))
         self.button.grid(row = 9, column = 0, columnspan = 2)
         top.lift()
 
@@ -2886,7 +2886,7 @@ class App():
         INPUT: None
         OUTPUT: None
         """
-        file_path = tkFileDialog.askopenfilename()
+        file_path = filedialog.askopenfilename()
         if not file_path:
             pass
         else:
@@ -2900,7 +2900,7 @@ class App():
         INPUT: None
         OUTPUT: None
         """
-        file_path = tkFileDialog.askopenfilename()
+        file_path = filedialog.askopenfilename()
         if not file_path:
             pass
         else:
@@ -2914,7 +2914,7 @@ class App():
         INPUT: None
         OUTPUT: None
         """
-        folder_path = tkFileDialog.askdirectory()
+        folder_path = filedialog.askdirectory()
         if not folder_path:
             pass
         else:
@@ -2928,7 +2928,7 @@ class App():
         INPUT: None
         OUTPUT: None
         """
-        file_path = tkFileDialog.askopenfilename()
+        file_path = filedialog.askopenfilename()
         if not file_path:
             pass
         else:
@@ -2942,7 +2942,7 @@ class App():
         INPUT: None
         OUTPUT: None
         """
-        file_path = tkFileDialog.askopenfilename()
+        file_path = filedialog.askopenfilename()
         if not file_path:
             pass
         else:
@@ -3004,7 +3004,8 @@ class App():
     ######################################################
     # START OF FUNCTIONS RELATED TO PARSING ANALYTE FILE #
     ######################################################
-    def getChanceNetwork(self,(mass,carbons,hydrogens,nitrogens,oxygens17,oxygens18,sulfurs33,sulfurs34,sulfurs36)):
+    #def getChanceNetwork(self,(mass,carbons,hydrogens,nitrogens,oxygens17,oxygens18,sulfurs33,sulfurs34,sulfurs36)):
+    def getChanceNetwork(self, foo):
         """ This function calculates the total chance network based on
         all the individual distributions. The function multiplies all
         the chances to get a single chance for a single option.
@@ -3013,6 +3014,7 @@ class App():
         other lists (1 for each isotopic state).
         OUTPUT: A list of float tuples (isotopic m/z, isotopic chance)
         """
+        mass,carbons,hydrogens,nitrogens,oxygens17,oxygens18,sulfurs33,sulfurs34,sulfurs36 = foo
         totals = []
         for x in itertools.product(carbons,hydrogens,nitrogens,oxygens17,oxygens18,sulfurs33,sulfurs34,sulfurs36):
             i, j, k, l, m, n, o, p = x
@@ -3141,7 +3143,7 @@ class App():
         # Chop composition into sub units and get exact mass & carbon count
         analyteFile = os.path.join(self.batchFolder,"analytes.ref")
         if OVERWRITE_ANALYTES == False:
-            print "USING EXISTING REFERENCE FILE"
+            print ("USING EXISTING REFERENCE FILE")
             return
         elif OVERWRITE_ANALYTES == True:
             if self.log == True:
@@ -3206,7 +3208,7 @@ class App():
                 with open('LaCyTools.log', 'a') as flog:
                     flog.write(str(datetime.now())+ "\tPRE-PROCESSING COMPLETE\n")
         else:
-            print "Incorrect value for the OVERWRITE_ANALYTES parameter"
+            print ("Incorrect value for the OVERWRITE_ANALYTES parameter")
 
     ####################################################
     # END OF FUNCTIONS RELATED TO PARSING ANALYTE FILE #
@@ -3221,10 +3223,10 @@ class App():
                 analyte)
         """
         if self.refFile == "":
-            tkMessageBox.showinfo("Error Message","No reference file selected")
+            messagebox.showinfo("Error Message","No reference file selected")
             return
         if self.inputFile == "":
-            tkMessageBox.showinfo("Error Message","No input file selected")
+            messagebox.showinfo("Error Message","No input file selected")
             return
         analyteBuffer = ""
         for i in ref:
@@ -3250,8 +3252,8 @@ class App():
                     try:
                         range(lowMz,highMz)
                     except TypeError:
-                        print "\nReference: "+str(i[0])+" has incorrect m/z parameters"
-                        raw_input("Press ENTER to exit")
+                        print ("\nReference: "+str(i[0])+" has incorrect m/z parameters")
+                        input("Press ENTER to exit")
                         sys.exit()
                     for k in range(lowMz, highMz):
                         # Get maximum point for S/N calculation
@@ -3288,7 +3290,7 @@ class App():
                                 if j[1] > maximum[1]:
                                     maximum = (j[0],j[1])
                         except:
-                            print "Analyte: "+str(i[0])+" is being troublesome, kill it"
+                            print ("Analyte: "+str(i[0])+" is being troublesome, kill it")
                 else:
                     intensity = 0
                     background = (0,0,0)
@@ -3299,7 +3301,7 @@ class App():
             return results
         else:
             for i in results:
-                print i
+                print (i)
 
     def getBackground(self, array, target, charge, width):
         """ This functin will determine the background and noise for a
@@ -3319,8 +3321,8 @@ class App():
             begin = self.binarySearch(array,(float(target)-i*C[0][2])-float(width),len(array)-1,'left')
             end = self.binarySearch(array,(float(target)-i*C[0][2])+float(width),len(array)-1,'right')
             if begin == None or end == None:
-                print "Specified m/z value of " +str((float(target)-i*C[0][2])-float(width)) + " or " + str((float(target)-i*C[0][2])+float(width))+ " outside of spectra range"
-                raw_input("Press enter to exit")
+                print ("Specified m/z value of " +str((float(target)-i*C[0][2])-float(width)) + " or " + str((float(target)-i*C[0][2])+float(width))+ " outside of spectra range")
+                input("Press enter to exit")
                 sys.exit()
             for j in array[begin:end]:
                 windowAreas.append(j[1] * ((array[end][0] - array[begin][0]) / (end - begin)))
@@ -3572,7 +3574,7 @@ class App():
 
 
 # Call the main app
-root = Tk()
+root = tk.Tk()
 app = App(root)
 root.mainloop()
 
