@@ -20,7 +20,7 @@ from matplotlib.backends.backend_tkagg import (
     FigureCanvasTkAgg, NavigationToolbar2Tk
 )
 from pathlib import Path, PurePath
-from scipy.interpolate import InterpolatedUnivariateSpline
+from scipy.interpolate import InterpolatedUnivariateSpline, interp1d
 from scipy.optimize import curve_fit
 import tkinter as tk
 from tkinter import filedialog, messagebox, ttk
@@ -1244,8 +1244,10 @@ class App():
         for i in features:
             mass, charge = i
             window = CALIB_MASS_WINDOW / charge
-            lowMz = self.binarySearch(spectrum,float(mass)-float(window),len(spectrum)-1,'left')
-            highMz = self.binarySearch(spectrum,float(mass)+float(window),len(spectrum)-1,'right')
+            lowMz = self.binarySearch(spectrum, float(mass)-float(window),
+                                      len(spectrum)-1,'left')
+            highMz = self.binarySearch(spectrum, float(mass)+float(window),
+                                       len(spectrum)-1,'right')
             x_points = []
             y_points = []
             for j in spectrum[lowMz:highMz]:
@@ -1255,7 +1257,7 @@ class App():
                                   int(2500*(x_points[-1]-x_points[0])))
             maximum = (newX[int(len(newX)/2)],0)
             try:
-                f = InterpolatedUnivariateSpline(x_points,y_points)
+                f = InterpolatedUnivariateSpline(x_points, y_points)
                 ySPLINE = f(newX)
                 for index, j in enumerate(ySPLINE):
                     if j > maximum[1]:
@@ -1305,7 +1307,41 @@ class App():
                 mz.append(float(line.strip()))
         return (float(lowTime), float(highTime), mz)
 
-    def sumSpectrum(self,time,array):
+    def sumSpectrum(self, time, array):
+        """ This function creates a summed spectrum on the basis of a
+        continuos linear fit (spline) mapped to the number of datapoints
+        requested by the user.
+
+        INPUT: The retention time-time window and an array containing
+               the entire measurement
+        OUTPUT: A sum spectrum in array form (m/z, intensity)
+        """
+        time = tuple(time.split('-'))
+        # This is returning None's now
+        low_time = self.binarySearch(array, float(time[0])-float(time[1]),
+                                    len(array)-1, 'left')
+        high_time = self.binarySearch(array, float(time[0])+float(time[1]),
+                                     len(array)-1, 'right')
+        min_mz = -numpy.inf
+        max_mz = numpy.inf
+        for i in array[low_time:high_time]:
+            if i[1][0][0] > min_mz:
+                min_mz = i[1][0][0]
+            if i[1][-1][0] < max_mz:
+                max_mz = i[1][-1][0]
+        # todo: cleanup above still
+        data_length = int((max_mz - min_mz) * SUM_SPECTRUM_RESOLUTION)
+        mz_axis = numpy.linspace(min_mz, max_mz, data_length)
+        int_axis = numpy.zeros(data_length)
+        for spectrum in array[low_time:high_time]:
+            mz, intens = zip(*spectrum[-1])
+            # fit = InterpolatedUnivariateSpline(x=mz, y=intens, k=1)
+            fit = interp1d(x=mz, y=intens)
+            int_axis = numpy.add(int_axis, fit(mz_axis))
+        combined_spectrum = numpy.stack((mz_axis, int_axis), axis=-1)
+        return combined_spectrum
+
+    def sumSpectrum_old(self, time, array):
         """ This function creates a summed spectrum and returns the
         resulting spectrum back to the calling function.
         
