@@ -5,3 +5,6 @@
 *.log
 *.raw
 *.xy
+.idea
+venv
+.DS_Store

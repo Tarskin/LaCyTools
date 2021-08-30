@@ -19,14 +19,11 @@ from datetime import datetime
 from matplotlib.backends.backend_tkagg import (
     FigureCanvasTkAgg, NavigationToolbar2Tk
 )
+from pathlib import Path, PurePath
 from scipy.interpolate import InterpolatedUnivariateSpline
-import scipy.optimize
 from scipy.optimize import curve_fit
-#from Tkinter import *
 import tkinter as tk
-from tkinter import filedialog
-from tkinter import messagebox
-from tkinter import ttk
+from tkinter import filedialog, messagebox, ttk
 import base64
 import collections
 import glob
@@ -283,20 +280,26 @@ class App():
         menu = tk.Menu(root)
         root.config(menu = menu)
 
-        filemenu = tk.Menu(menu,tearoff=0)
-        menu.add_cascade(label="File", menu=filemenu)
-        filemenu.add_command(label="Open Input File", command = self.openFile)
+        file_menu = tk.Menu(menu,tearoff=0)
+        menu.add_cascade(label="File", menu=file_menu)
+        file_menu.add_command(label="Open Input File", command = self.openFile)
 
-        extractmenu = tk.Menu(menu,tearoff=0)
-        menu.add_cascade(label="Extraction", menu=extractmenu)
-        extractmenu.add_command(label="Open ref file", command = self.openRefFile)
-        extractmenu.add_command(label="Extract", command = self.extractData)
+        extract_menu = tk.Menu(menu,tearoff=0)
+        menu.add_cascade(label="Extraction", menu=extract_menu)
+        extract_menu.add_command(label="Open ref file", command = self.openRefFile)
+        extract_menu.add_command(label="Extract", command = self.extractData)
 
-        menu.add_command(label="Batch Process", command = lambda: self.batchPopup(self))
+        batch_menu = tk.Menu(menu, tearoff=0)
+        menu.add_cascade(label="Batch Process", menu=batch_menu)
+        batch_menu.add_command(label="Batch Process", command = lambda: self.batchPopup(self))
 
-        menu.add_command(label="Data Storage", command = lambda: self.dataPopup(self))
+        storage_menu = tk.Menu(menu, tearoff=0)
+        menu.add_cascade(label="Data Storage", menu=storage_menu)
+        storage_menu.add_command(label="Data Storage", command = lambda: self.dataPopup(self))
         
-        menu.add_command(label="Settings", command = lambda: self.settingsPopup(self))
+        settings_menu = tk.Menu(menu, tearoff=0)
+        menu.add_cascade(label="Settings", menu=settings_menu)
+        settings_menu.add_command(label="Settings", command = lambda: self.settingsPopup(self))
 
     def selectIsotopes(self, results):
         """ TODO
@@ -632,11 +635,13 @@ class App():
                 z = curve_fit(self.fitFuncLin,observed,expected)
             name = self.inputFile.split(".")[0]
             name = os.path.join(self.batchFolder,name)
+            # name = Path(self.batchFolder) / Path(self.inputFile).\
+            #     with_suffix('')
             #############
             # Plot Code #
             #############
-            minX = min(expected)-0.1*min(expected)
-            maxX = max(expected)+0.1*max(expected)
+            minX = int(min(expected)-0.1*min(expected))
+            maxX = int(max(expected)+0.1*max(expected))
             newX = numpy.linspace(minX,maxX,2500*(maxX-minX))
             linY = newX
             if func == "PowerLaw":
@@ -1076,12 +1081,12 @@ class App():
                                 with open('LaCyTools.log', 'a') as flog:
                                     flog.write(str(datetime.now())+ "\tUnable to calibrate the sum spectrum at "+str(i)+" seconds\n")
                             # Adjust filename
-                            (old, new) = os.path.split(self.inputFile)
-                            old = os.path.abspath(old)
-                            new = os.path.splitext(new)[0]
-                            new = "Uncalibrated_sumSpectrum_"+str(i)+"_"+str(new)+".xy"
-                            new = os.path.join(old,new)
-                            outFile = "\\\\?\\"+new
+                            parent = Path(self.inputFile).parent
+                            new = Path(self.inputFile).with_suffix('.xy').name
+                            outFile = parent / Path(
+                                "Uncalibrated_sumSpectrum_" + str(i) + "_" +
+                                new
+                            )
                             # Write
                             with open(outFile,'w') as fw:
                                 fw.write("\n".join(str(j[0])+"\t"+str(j[1]) for j in spectrum))
@@ -1104,23 +1109,17 @@ class App():
                             newSpectrum.append((j,intList[index]))
                         spectrum = newSpectrum
                         # Adjust filename
-                        (old, new) = os.path.split(self.inputFile)
-                        old = os.path.abspath(old)
-                        new = os.path.splitext(new)[0]
-                        new = "sumSpectrum_"+str(i)+"_"+str(new)+".xy"
-                        new = os.path.join(old,new)
-                        outFile = "\\\\?\\"+new
+                        parent = Path(self.inputFile).parent
+                        new = Path(self.inputFile).with_suffix('.xy').name
+                        outFile = parent / Path("sumSpectrum_"+str(i)+"_"+new)
                         # Write
                         with open(outFile,'w') as fw:
                             fw.write("\n".join(str(j[0])+"\t"+str(j[1]) for j in spectrum))
                     else:
                         # Adjust filename
-                        (old, new) = os.path.split(self.inputFile)
-                        old = os.path.abspath(old)
-                        new = os.path.splitext(new)[0]
-                        new = "sumSpectrum_"+str(i)+"_"+str(new)+".xy"
-                        new = os.path.join(old,new)
-                        outFile = "\\\\?\\"+new
+                        parent = Path(self.inputFile).parent
+                        new = Path(self.inputFile).with_suffix('.xy').name
+                        outFile = parent / Path("sumSpectrum_"+str(i)+"_"+new)
                         # Write
                         with open(outFile,'w') as fw:
                             fw.write("\n".join(str(j[0])+"\t"+str(j[1]) for j in spectrum))
@@ -1252,7 +1251,8 @@ class App():
             for j in spectrum[lowMz:highMz]:
                 x_points.append(j[0])
                 y_points.append(j[1])
-            newX = numpy.linspace(x_points[0],x_points[-1],2500*(x_points[-1]-x_points[0]))
+            newX = numpy.linspace(x_points[0], x_points[-1],
+                                  int(2500*(x_points[-1]-x_points[0])))
             maximum = (newX[int(len(newX)/2)],0)
             try:
                 f = InterpolatedUnivariateSpline(x_points,y_points)
@@ -3338,12 +3338,14 @@ class App():
             end = self.binarySearch(array,(float(target)-i*C[0][2])+float(width),len(array)-1,'right')
             if begin == None or end == None:
                 print ("Specified m/z value of " +str((float(target)-i*C[0][2])-float(width)) + " or " + str((float(target)-i*C[0][2])+float(width))+ " outside of spectra range")
-                input("Press enter to exit")
-                sys.exit()
-            for j in array[begin:end]:
-                windowAreas.append(j[1] * ((array[end][0] - array[begin][0]) / (end - begin)))
-                windowIntensities.append(j[1])
-                windowMz.append(j[0])
+                windowAreas.append(0)
+                windowMz.append(0)
+                windowIntensities.append(0)
+            else:
+                for j in array[begin:end]:
+                    windowAreas.append(j[1] * ((array[end][0] - array[begin][0]) / (end - begin)))
+                    windowIntensities.append(j[1])
+                    windowMz.append(j[0])
             totals.append((windowAreas,windowIntensities,windowMz))
         # Find the set of 5 consecutive windows with lowest average intensity
         if self.background == "MIN":
