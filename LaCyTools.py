@@ -642,7 +642,7 @@ class App():
             #############
             minX = int(min(expected)-0.1*min(expected))
             maxX = int(max(expected)+0.1*max(expected))
-            newX = numpy.linspace(minX,maxX,2500*(maxX-minX))
+            newX = numpy.linspace(minX,maxX,int(2500*(maxX-minX)))
             linY = newX
             if func == "PowerLaw":
                 yNew = self.fitFunc(newX,*z[0])
