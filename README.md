@@ -1,5 +1,5 @@
 # LaCyTools
-[![Codacy Badge](https://api.codacy.com/project/badge/Grade/91d46a37931d43f78c540cf33363d93a)](https://www.codacy.com/project/Tarskin/LaCyTools/dashboard?utm_source=github.com&amp;utm_medium=referral&amp;utm_content=Tarskin/LaCyTools&amp;utm_campaign=Badge_Grade_Dashboard)
+[![Codacy Badge](https://app.codacy.com/project/badge/Grade/84d61117770f4f5782a1decfed54b9cb)](https://www.codacy.com/gh/Tarskin/LaCyTools/dashboard?utm_source=github.com&amp;utm_medium=referral&amp;utm_content=Tarskin/LaCyTools&amp;utm_campaign=Badge_Grade)
 
 LaCyTools is open-source software for researcher focussing on chromatgraphy coupled to mass spectrometry. It includes modules for retention time and m/z calibration, peak integration, quality control and more. The tool was first described in a 2016 Journal of Proteome Research article, located at https://pubs.acs.org/doi/10.1021/acs.jproteome.6b00171
 
