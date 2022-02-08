@@ -1,6 +1,6 @@
 #! /usr/bin/env python
 #
-# Copyright 2014-2016 Bas C. Jansen
+# Copyright 2014-2022 Bas C. Jansen
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -223,7 +223,7 @@ class App():
         # VARIABLES
         self.master = master
         self.version = "1.1.0-alpha"
-        self.build = "190207b"
+        self.build = "22.02.08"
         self.inputFile = ""
         self.inputFileIdx = 0
         self.refFile = ""
@@ -1529,8 +1529,8 @@ class App():
             if sumInt > 0.:
                 header += str(sumInt)
         header += "\n"
-        # List of monoisotopic masses
-        header += "Monoisotopic Mass"
+        # List of most abundant isotopologue masses
+        header += "Exact mass of most abundant isotopologue"
         for i in compositions:
             masses = []
             current_relative_intensity = 0.
@@ -3327,7 +3327,7 @@ class App():
                     ######################################################################
                     if self.qualityControl.get() == 1:
                         try:
-                            newX = numpy.linspace(x_points[0],x_points[-1],2500*(x_points[-1]-x_points[0]))
+                            newX = numpy.linspace(x_points[0],x_points[-1],int(2500*(x_points[-1]-x_points[0])))
                             f = InterpolatedUnivariateSpline(x_points,y_points)
                             ySPLINE = f(newX)
                             for index, j in enumerate(ySPLINE):
