@@ -514,7 +514,7 @@ class App():
         createToolTip(self.calibMassWindowLabel,"The mass window in Dalton around the specified exact m/z of a calibrant, that LaCyTools uses to determine the uncalibrated accurate mass. This value will be charge state corrected, i.e. for a triple charged analyte the used window will be the value specified here divided by 3.")
         createToolTip(self.calibSnLabel,"The minimum S/N of a calibrant to be included in the calibration.")
         createToolTip(self.calibMinLabel,"The minimum number of calibrants that have a S/N higher than the minimum S/N for calibration to occur.")
-        createToolTip(self.sumSpecLabel,"The number of bins per m/z that will be used in the sum spectrum. A value of 100 means that each data point in the sum spectrum is spaced at 0.01 m/z.")
+        createToolTip(self.sumSpecLabel,"The number of data points per m/z in the fitted sum spectrum. A value of 100 means that each data point in the sum spectrum is spaced at 0.01 m/z.")
         createToolTip(self.extracMassWindowLabel,"The m/z window in Thompson around the specified exact m/z of a feature that LaCyTools will use for quantitation. For example, a value of 0.1 results in LaCyTools quantifying 999.9 to 1000.1 for a feature with an m/z value of 1000.")
         createToolTip(self.extracTimeWindowLabel,"The rt window in seconds around the specified elution time of each cluster that contains features for quantitation. For example, a value of 10 will result in LaCyTools creating a sum spectrum from 90 s. to 110 s. for a cluster eluting at 100s.")
         createToolTip(self.extracMinChargeLabel,"The minimum charge state that LaCyTools will attempt to use in calibration and quantitation for all features listed in the analyte reference file.")
