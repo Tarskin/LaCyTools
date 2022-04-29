@@ -1,6 +1,6 @@
 #! /usr/bin/env python
 #
-# Copyright 2014-2016 Bas C. Jansen
+# Copyright 2014-2022 Bas C. Jansen
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -19,14 +19,11 @@ from datetime import datetime
 from matplotlib.backends.backend_tkagg import (
     FigureCanvasTkAgg, NavigationToolbar2Tk
 )
-from scipy.interpolate import InterpolatedUnivariateSpline
-import scipy.optimize
+from pathlib import Path, PurePath
+from scipy.interpolate import InterpolatedUnivariateSpline, interp1d
 from scipy.optimize import curve_fit
-#from Tkinter import *
 import tkinter as tk
-from tkinter import filedialog
-from tkinter import messagebox
-from tkinter import ttk
+from tkinter import filedialog, messagebox, ttk
 import base64
 import collections
 import glob
@@ -226,7 +223,7 @@ class App():
         # VARIABLES
         self.master = master
         self.version = "1.1.0-alpha"
-        self.build = "190207b"
+        self.build = "22.02.08"
         self.inputFile = ""
         self.inputFileIdx = 0
         self.refFile = ""
@@ -283,20 +280,26 @@ class App():
         menu = tk.Menu(root)
         root.config(menu = menu)
 
-        filemenu = tk.Menu(menu,tearoff=0)
-        menu.add_cascade(label="File", menu=filemenu)
-        filemenu.add_command(label="Open Input File", command = self.openFile)
+        file_menu = tk.Menu(menu,tearoff=0)
+        menu.add_cascade(label="File", menu=file_menu)
+        file_menu.add_command(label="Open Input File", command = self.openFile)
 
-        extractmenu = tk.Menu(menu,tearoff=0)
-        menu.add_cascade(label="Extraction", menu=extractmenu)
-        extractmenu.add_command(label="Open ref file", command = self.openRefFile)
-        extractmenu.add_command(label="Extract", command = self.extractData)
+        extract_menu = tk.Menu(menu,tearoff=0)
+        menu.add_cascade(label="Extraction", menu=extract_menu)
+        extract_menu.add_command(label="Open ref file", command = self.openRefFile)
+        extract_menu.add_command(label="Extract", command = self.extractData)
 
-        menu.add_command(label="Batch Process", command = lambda: self.batchPopup(self))
+        batch_menu = tk.Menu(menu, tearoff=0)
+        menu.add_cascade(label="Batch Process", menu=batch_menu)
+        batch_menu.add_command(label="Batch Process", command = lambda: self.batchPopup(self))
 
-        menu.add_command(label="Data Storage", command = lambda: self.dataPopup(self))
+        storage_menu = tk.Menu(menu, tearoff=0)
+        menu.add_cascade(label="Data Storage", menu=storage_menu)
+        storage_menu.add_command(label="Data Storage", command = lambda: self.dataPopup(self))
         
-        menu.add_command(label="Settings", command = lambda: self.settingsPopup(self))
+        settings_menu = tk.Menu(menu, tearoff=0)
+        menu.add_cascade(label="Settings", menu=settings_menu)
+        settings_menu.add_command(label="Settings", command = lambda: self.settingsPopup(self))
 
     def selectIsotopes(self, results):
         """ TODO
@@ -632,12 +635,14 @@ class App():
                 z = curve_fit(self.fitFuncLin,observed,expected)
             name = self.inputFile.split(".")[0]
             name = os.path.join(self.batchFolder,name)
+            # name = Path(self.batchFolder) / Path(self.inputFile).\
+            #     with_suffix('')
             #############
             # Plot Code #
             #############
-            minX = min(expected)-0.1*min(expected)
-            maxX = max(expected)+0.1*max(expected)
-            newX = numpy.linspace(minX,maxX,2500*(maxX-minX))
+            minX = int(min(expected)-0.1*min(expected))
+            maxX = int(max(expected)+0.1*max(expected))
+            newX = numpy.linspace(minX,maxX,int(2500*(maxX-minX)))
             linY = newX
             if func == "PowerLaw":
                 yNew = self.fitFunc(newX,*z[0])
@@ -1076,12 +1081,12 @@ class App():
                                 with open('LaCyTools.log', 'a') as flog:
                                     flog.write(str(datetime.now())+ "\tUnable to calibrate the sum spectrum at "+str(i)+" seconds\n")
                             # Adjust filename
-                            (old, new) = os.path.split(self.inputFile)
-                            old = os.path.abspath(old)
-                            new = os.path.splitext(new)[0]
-                            new = "Uncalibrated_sumSpectrum_"+str(i)+"_"+str(new)+".xy"
-                            new = os.path.join(old,new)
-                            outFile = "\\\\?\\"+new
+                            parent = Path(self.inputFile).parent
+                            new = Path(self.inputFile).with_suffix('.xy').name
+                            outFile = parent / Path(
+                                "Uncalibrated_sumSpectrum_" + str(i) + "_" +
+                                new
+                            )
                             # Write
                             with open(outFile,'w') as fw:
                                 fw.write("\n".join(str(j[0])+"\t"+str(j[1]) for j in spectrum))
@@ -1104,23 +1109,17 @@ class App():
                             newSpectrum.append((j,intList[index]))
                         spectrum = newSpectrum
                         # Adjust filename
-                        (old, new) = os.path.split(self.inputFile)
-                        old = os.path.abspath(old)
-                        new = os.path.splitext(new)[0]
-                        new = "sumSpectrum_"+str(i)+"_"+str(new)+".xy"
-                        new = os.path.join(old,new)
-                        outFile = "\\\\?\\"+new
+                        parent = Path(self.inputFile).parent
+                        new = Path(self.inputFile).with_suffix('.xy').name
+                        outFile = parent / Path("sumSpectrum_"+str(i)+"_"+new)
                         # Write
                         with open(outFile,'w') as fw:
                             fw.write("\n".join(str(j[0])+"\t"+str(j[1]) for j in spectrum))
                     else:
                         # Adjust filename
-                        (old, new) = os.path.split(self.inputFile)
-                        old = os.path.abspath(old)
-                        new = os.path.splitext(new)[0]
-                        new = "sumSpectrum_"+str(i)+"_"+str(new)+".xy"
-                        new = os.path.join(old,new)
-                        outFile = "\\\\?\\"+new
+                        parent = Path(self.inputFile).parent
+                        new = Path(self.inputFile).with_suffix('.xy').name
+                        outFile = parent / Path("sumSpectrum_"+str(i)+"_"+new)
                         # Write
                         with open(outFile,'w') as fw:
                             fw.write("\n".join(str(j[0])+"\t"+str(j[1]) for j in spectrum))
@@ -1245,17 +1244,20 @@ class App():
         for i in features:
             mass, charge = i
             window = CALIB_MASS_WINDOW / charge
-            lowMz = self.binarySearch(spectrum,float(mass)-float(window),len(spectrum)-1,'left')
-            highMz = self.binarySearch(spectrum,float(mass)+float(window),len(spectrum)-1,'right')
+            lowMz = self.binarySearch(spectrum, float(mass)-float(window),
+                                      len(spectrum)-1,'left')
+            highMz = self.binarySearch(spectrum, float(mass)+float(window),
+                                       len(spectrum)-1,'right')
             x_points = []
             y_points = []
             for j in spectrum[lowMz:highMz]:
                 x_points.append(j[0])
                 y_points.append(j[1])
-            newX = numpy.linspace(x_points[0],x_points[-1],2500*(x_points[-1]-x_points[0]))
+            newX = numpy.linspace(x_points[0], x_points[-1],
+                                  int(2500*(x_points[-1]-x_points[0])))
             maximum = (newX[int(len(newX)/2)],0)
             try:
-                f = InterpolatedUnivariateSpline(x_points,y_points)
+                f = InterpolatedUnivariateSpline(x_points, y_points)
                 ySPLINE = f(newX)
                 for index, j in enumerate(ySPLINE):
                     if j > maximum[1]:
@@ -1305,7 +1307,41 @@ class App():
                 mz.append(float(line.strip()))
         return (float(lowTime), float(highTime), mz)
 
-    def sumSpectrum(self,time,array):
+    def sumSpectrum(self, time, array):
+        """ This function creates a summed spectrum on the basis of a
+        continuos linear fit (spline) mapped to the number of datapoints
+        requested by the user.
+
+        INPUT: The retention time-time window and an array containing
+               the entire measurement
+        OUTPUT: A sum spectrum in array form (m/z, intensity)
+        """
+        time = tuple(time.split('-'))
+        # This is returning None's now
+        low_time = self.binarySearch(array, float(time[0])-float(time[1]),
+                                    len(array)-1, 'left')
+        high_time = self.binarySearch(array, float(time[0])+float(time[1]),
+                                     len(array)-1, 'right')
+        min_mz = -numpy.inf
+        max_mz = numpy.inf
+        for i in array[low_time:high_time]:
+            if i[1][0][0] > min_mz:
+                min_mz = i[1][0][0]
+            if i[1][-1][0] < max_mz:
+                max_mz = i[1][-1][0]
+        # todo: cleanup above still
+        data_length = int((max_mz - min_mz) * SUM_SPECTRUM_RESOLUTION)
+        mz_axis = numpy.linspace(min_mz, max_mz, data_length)
+        int_axis = numpy.zeros(data_length)
+        for spectrum in array[low_time:high_time]:
+            mz, intens = zip(*spectrum[-1])
+            # fit = InterpolatedUnivariateSpline(x=mz, y=intens, k=1)
+            fit = interp1d(x=mz, y=intens)
+            int_axis = numpy.add(int_axis, fit(mz_axis))
+        combined_spectrum = numpy.stack((mz_axis, int_axis), axis=-1)
+        return combined_spectrum
+
+    def sumSpectrum_old(self, time, array):
         """ This function creates a summed spectrum and returns the
         resulting spectrum back to the calling function.
         
@@ -1493,8 +1529,8 @@ class App():
             if sumInt > 0.:
                 header += str(sumInt)
         header += "\n"
-        # List of monoisotopic masses
-        header += "Monoisotopic Mass"
+        # List of most abundant isotopologue masses
+        header += "Exact mass of most abundant isotopologue"
         for i in compositions:
             masses = []
             current_relative_intensity = 0.
@@ -3291,7 +3327,7 @@ class App():
                     ######################################################################
                     if self.qualityControl.get() == 1:
                         try:
-                            newX = numpy.linspace(x_points[0],x_points[-1],2500*(x_points[-1]-x_points[0]))
+                            newX = numpy.linspace(x_points[0],x_points[-1],int(2500*(x_points[-1]-x_points[0])))
                             f = InterpolatedUnivariateSpline(x_points,y_points)
                             ySPLINE = f(newX)
                             for index, j in enumerate(ySPLINE):
@@ -3338,12 +3374,14 @@ class App():
             end = self.binarySearch(array,(float(target)-i*C[0][2])+float(width),len(array)-1,'right')
             if begin == None or end == None:
                 print ("Specified m/z value of " +str((float(target)-i*C[0][2])-float(width)) + " or " + str((float(target)-i*C[0][2])+float(width))+ " outside of spectra range")
-                input("Press enter to exit")
-                sys.exit()
-            for j in array[begin:end]:
-                windowAreas.append(j[1] * ((array[end][0] - array[begin][0]) / (end - begin)))
-                windowIntensities.append(j[1])
-                windowMz.append(j[0])
+                windowAreas.append(0)
+                windowMz.append(0)
+                windowIntensities.append(0)
+            else:
+                for j in array[begin:end]:
+                    windowAreas.append(j[1] * ((array[end][0] - array[begin][0]) / (end - begin)))
+                    windowIntensities.append(j[1])
+                    windowMz.append(j[0])
             totals.append((windowAreas,windowIntensities,windowMz))
         # Find the set of 5 consecutive windows with lowest average intensity
         if self.background == "MIN":
