@@ -6,10 +6,18 @@ LaCyTools is open-source software for researcher focussing on chromatgraphy coup
 * __Source__: https://github.com/Tarskin/LaCyTools
 * __Bug reports__: https://github.com/Tarskin/LaCyTools/issues
 
-LaCyTools depends on NumPy, SciPy and matplotlib. NumPy and SciPy are used predominantly for data fitting and numerical operations on arrays. Matplotlib is used to draw all of the graphical elements that are used/created by LaCyToolsTools in both the GUI and the images. LaCyTools is currently undergoing refactoring work (as part of the Python3 upgrade) to allow it to also work as a package, allowing easy access to all of it's functionality. However, the refactoring requires a significant amount of coding and therefore, we request that you inform us about any issues that you might encounter using the above mentioned bug reports page.
+LaCyTools requires at least Python 3.8 and depends on NumPy, SciPy and matplotlib. NumPy and SciPy are used predominantly for data fitting and numerical operations on arrays. Matplotlib is used to draw all of the graphical elements that are used/created by LaCyToolsTools in both the GUI and the images (see the requirements.txt for the full list)
 
 # Developer information
 If you would like to take part in LaCyTools development, take a look at the CONTRIBUTING and CODE_OF_CONDUCT files.
 
 # License information
 See the file LICENSE.txt for information on the history of this software, terms & conditions for usage, and a DISCLAIMER OF ALL WARRANTIES.
+
+# Installing LaCyTools (Windows)
+
+* Install Python3.8
+* Download the LaCyTools zip file and extract it to a non-protected folder
+* Create a Python3.8 virtual environment (python3.8 -m venv LaCyTools) in the root folder where LaCyTools is extracted
+* Activate the virtual environment (source LaCyTools/bin/activate)
+* Install the specific requirements (pip install -r requirements.txt)

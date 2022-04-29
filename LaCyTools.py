@@ -28,7 +28,6 @@ import base64
 import collections
 import glob
 import itertools
-import linecache
 import math
 import matplotlib.pyplot as plt
 import matplotlib
@@ -223,7 +222,7 @@ class App():
         # VARIABLES
         self.master = master
         self.version = "1.1.0-alpha"
-        self.build = "22.02.08"
+        self.build = "22.04.29"
         self.inputFile = ""
         self.inputFileIdx = 0
         self.refFile = ""
