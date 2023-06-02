@@ -580,6 +580,10 @@ class App():
                 if chunks[0] == "S_N_CUTOFF":
                     global S_N_CUTOFF
                     S_N_CUTOFF = int(chunks[1])
+                if chunks[0] == "EXTRACTION_PADDING":
+                    global EXTRACTION_PADDING
+                    EXTRACTION_PADDING = int(chunks[1])
+
                         
     def feature_reader(self,file):
         """ This reads the contents of the alignmen features file and 
