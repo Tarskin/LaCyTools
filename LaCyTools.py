@@ -11,7 +11,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-# You should have received a coyp of the Apache 2.0 license along
+# You should have received a copy of the Apache 2.0 license along
 # with this program; if not, see 
 # http://www.apache.org/licenses/LICENSE-2.0
 
@@ -19,7 +19,7 @@ from datetime import datetime
 from matplotlib.backends.backend_tkagg import (
     FigureCanvasTkAgg, NavigationToolbar2Tk
 )
-from pathlib import Path, PurePath
+from pathlib import Path
 from scipy.interpolate import InterpolatedUnivariateSpline, interp1d
 from scipy.optimize import curve_fit
 import tkinter as tk
@@ -54,13 +54,13 @@ OVERWRITE_ANALYTES = True       # This option specifies if LaCyTools should over
 # Alignment Parameters
 ALIGNMENT_TIME_WINDOW = 10      # The +/- time window that the program is allowed to look for the feature for alignment (EIC time axis)
 ALIGNMENT_MASS_WINDOW = 0.1     # The +/- m/z window (not charge state corrected) that is used to detect the feature used for alignment. Afterwards a spline fit is used to detect the measured time
-ALIGNMENT_BACKGROUND_MULTIPLIER = 2 # The multiplier of the timewindow used for background determination
+ALIGNMENT_BACKGROUND_MULTIPLIER = 2 # The multiplier of the time window used for background determination
 ALIGNMENT_S_N_CUTOFF = 9        # The minimum S/N value of a feature to be used for alignment
 ALIGNMENT_MIN_PEAK = 5          # The minimum number of features used for alignment
 
 # Calibration Parameters
 SUM_SPECTRUM_RESOLUTION = 100   # Number of data points per 1 whole m/z unit
-CALIB_MASS_WINDOW = 0.5         # This +/- mass window (in Dalton) used to detect the accurate mass of a calibra
+CALIB_MASS_WINDOW = 0.5         # This +/- mass window (in Dalton) used to detect the accurate mass of a calibrant
 CALIB_S_N_CUTOFF = 9            # The minimum S/N value of a feature to be used for calibration
 CALIB_MIN_PEAK = 3              # Minimum number of calibrants
 
@@ -75,7 +75,7 @@ TIME_WINDOW = 8                 # The +/- time window that will be used around a
 EXTRACTION_PADDING = 2          # total number of additional windows to be examined and quantified (for IPQ)
 MIN_CHARGE = 2                  # The minimum charge state that the program will integrate for all features (unless overwritten in the composition file)
 MAX_CHARGE = 3                  # The maximum charge state that the program will integrate for all features (unless overwritten in the composition file)
-#MIN_CONTRIBUTION = 0.01        # Minimum contribution to isotopic distrubition to be included (NOT BEING USED ATM)
+#MIN_CONTRIBUTION = 0.01        # Minimum contribution to isotopic distribution to be included (NOT BEING USED ATM)
 MIN_TOTAL = 0.95                # Desired contribution of extracted isotopes of total isotopic pattern
 BACKGROUND_WINDOW = 10          # Total m/z window (+ and -) to search for background
 S_N_CUTOFF = 9                  # Minimum signal to noise value of an analyte to be included in the percentage QC
@@ -254,7 +254,7 @@ class App():
         self.noise = "RMS"
         self.fig = matplotlib.figure.Figure(figsize=(12, 6))
 
-        # Attempt to retrieve previously saved settings from settingsfile
+        # Attempt to retrieve previously saved settings from settings file
         if os.path.isfile('./'+str(SETTINGS_FILE)):
             self.getSettings()
 
@@ -523,7 +523,7 @@ class App():
         createToolTip(self.extracMaxChargeLabel,"The maximum charge state that LaCyTools will attempt to use in calibration and quantitation for all features listed in the analyte reference file.")
         createToolTip(self.chargeCarrierLabel,"The charge carrier that is applied to all specified analytes for quantitation.")
         createToolTip(self.extracPadLabel,"The number of windows before the regular analyte windows that will be examined to determine the IPQ.")
-        createToolTip(self.extracMinTotalLabel,"The minimum fraction of the theoretical isotopic pattern that LaCyTools will use for quantitation. For example, a value of 0.95 means that LaCyTools will quantify isotopes until the sum of the quantified isotopes exceeds 0.95 of the total theoretcal isotopic pattern.")
+        createToolTip(self.extracMinTotalLabel,"The minimum fraction of the theoretical isotopic pattern that LaCyTools will use for quantitation. For example, a value of 0.95 means that LaCyTools will quantify isotopes until the sum of the quantified isotopes exceeds 0.95 of the total theoretical isotopic pattern.")
         createToolTip(self.extracBackLabel,"The mass window in Dalton that LaCyTools is allowed to look for the local background and noise for each analyte. For example, a value of 10 means that LaCyTools will look from 990 m/z to 1010 m/z for an analyte with an m/z of 1000.")
         createToolTip(self.extracSnCutoffLabel,"The minimum S/N of an analyte to be included in the spectral QC. Specifically, for the output that lists what fraction of the total quantified analytes passed the here specified S/N value.")
 
@@ -583,10 +583,9 @@ class App():
                 if chunks[0] == "EXTRACTION_PADDING":
                     global EXTRACTION_PADDING
                     EXTRACTION_PADDING = int(chunks[1])
-
                         
     def feature_reader(self,file):
-        """ This reads the contents of the alignmen features file and 
+        """ This reads the contents of the alignment features file and 
         stores the relevant values in a list.
         
         INPUT: A filename
@@ -603,7 +602,7 @@ class App():
                     print ("Incorrect line observed in: ")+str(file)
                     if self.log == True:
                         with open('LaCyTools.log', 'a') as flog:
-                            flog.write(str(datetime.now())+ "\tIncorrect line observed in: "+str(analyteFile)+"\n")
+                            flog.write(str(datetime.now())+ "\tIncorrect line observed in: "+str(file)+"\n")
                 except:
                     print ("Unexpected Error: "), sys.exc_info()[0]
         return features
@@ -638,8 +637,6 @@ class App():
                 z = curve_fit(self.fitFuncLin,observed,expected)
             name = self.inputFile.split(".")[0]
             name = os.path.join(self.batchFolder,name)
-            # name = Path(self.batchFolder) / Path(self.inputFile).\
-            #     with_suffix('')
             #############
             # Plot Code #
             #############
@@ -1213,13 +1210,13 @@ class App():
         that were actually observed to a list (actualCalibrants) which
         is returned at the end of the function.
 
-        INPUT 1: A list of floats containg the observed local maxima (of
+        INPUT 1: A list of floats containing the observed local maxima (of
         the spline fit within each inclusion range, assuming that they
         were above user specified S/N cut off).
         INPUT 2: A list of floats containing the theoretical m/z of all
         calibrants.
         OUTPUT: A list of floats containing the theoretical m/z of the
-        calibrants which were near an oberved local maxima.
+        calibrants which were near an observed local maxima.
         """
         actualCalibrants = []
         for i in maxima:
@@ -1296,11 +1293,11 @@ class App():
 
     def readCalibrationFeatures(self):
         """ This function reads the calibration file and returns the
-        features in a tuple containg the lower time and upper time values
+        features in a tuple containing the lower time and upper time values
         followed by a list of the m/z coordinates
 
         INPUT: None
-        OUTPUT: Tuple containing (lowTime, highTime, [m/z coordinatse])
+        OUTPUT: Tuple containing (lowTime, highTime, [m/z coordinates])
         """
         with open(self.calFile,'r') as fr:
             firstLine = fr.readline()
@@ -1396,7 +1393,7 @@ class App():
         return combinedSpectra
 
     def findNearest(self,array,value):
-        """ A depracated function, will most likely be removed in the
+        """ A deprecated function, will most likely be removed in the
         near future.
         """
         if value >= array[0][0] and value <= array[-1][0]:
@@ -1498,7 +1495,7 @@ class App():
     def createHeader(self, compositions, reference, chargestate=None):
         """Creates a generic header for both combined and separate
         charge states. The function uses the initial reference list,
-        the extracted compositions and the optional chargestate.
+        the extracted compositions and the optional charge state.
         
         INPUT 1: A list of tuples (analyte composition, analyte 
                  retention time)
@@ -2723,7 +2720,7 @@ class App():
                 fw.write("\n")
 
     def writeResults(self,results,file):
-        """ This function writes the resultes per file away to a raw
+        """ This function writes the results per file away to a raw
         file.
         
         INPUT: A file name and a list of results
@@ -2790,7 +2787,7 @@ class App():
 
         top = self.top = tk.Toplevel()
         top.protocol( "WM_DELETE_WINDOW", lambda: close(self))
-        self.aligns = tk.Button(top, text = "Alignment File", widt = 25, command = lambda: alButton())
+        self.aligns = tk.Button(top, text = "Alignment File", width = 25, command = lambda: alButton())
         self.aligns.grid(row = 2, column = 0, sticky = tk.W)
         self.alLabel = tk.Label(top, textvariable = self.al, width = 25)
         self.alLabel.grid(row = 2, column = 1)
@@ -3359,7 +3356,7 @@ class App():
                 print (i)
 
     def getBackground(self, array, target, charge, width):
-        """ This functin will determine the background and noise for a
+        """ This function will determine the background and noise for a
         given analyte.
         
         INPUT: The spectrum in array form, the exact m/z of the analyte,
@@ -3598,8 +3595,8 @@ class App():
         the entire measurement.
         
         INPUT: An encoded string and the data array containing all of 
-                the measuremen that has been processed up to this point
-        OUTPUT: A data array containing all of the measuremen that has
+                the measurement that has been processed up to this point
+        OUTPUT: A data array containing all of the measurement that has
                 been processed up to this point
         """
         endian = ">"
